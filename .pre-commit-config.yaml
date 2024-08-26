@@ -23,7 +23,7 @@ repos:
       - id: trailing-whitespace        # This hook trims trailing whitespace
 
   - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
+    rev: 7.1.1
     hooks:
       - id: flake8
         additional_dependencies: [
@@ -72,12 +72,12 @@ repos:
         - --include-version-classifiers
 
   - repo: https://github.com/psf/black
-    rev: 22.12.0
+    rev: 24.8.0
     hooks:
     - id: black
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+    rev: 5.13.2
     hooks:
       - id: isort
         name: isort (python)
