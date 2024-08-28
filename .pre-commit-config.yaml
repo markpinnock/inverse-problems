@@ -105,3 +105,25 @@ repos:
     - id: docformatter
       args:
       - --wrap-summaries=88
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks: # https://github.com/python/mypy/issues/4008#issuecomment-582458665
+      - id: mypy
+        name: mypy
+        pass_filenames: false
+        args:
+          [
+            --strict-equality,
+            --disallow-untyped-calls,
+            --disallow-untyped-defs,
+            --disallow-incomplete-defs,
+            --disallow-any-generics,
+            --check-untyped-defs,
+            --disallow-untyped-decorators,
+            --warn-redundant-casts,
+            --warn-unused-ignores,
+            --no-warn-no-return,
+            --warn-unreachable,
+          ]
+        additional_dependencies: ["types-requests", "types-PyYAML"]
