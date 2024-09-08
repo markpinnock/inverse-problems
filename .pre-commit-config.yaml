@@ -10,8 +10,6 @@ repos:
       - id: check-docstring-first      # Checks a common error of defining a docstring after code
       - id: check-merge-conflict       # Check for files that contain merge conflict strings
       - id: check-toml                 # Attempts to load all TOML files to verify syntax
-        additional_dependencies:
-          - tomli
       - id: check-yaml                 # Attempts to load all YAML files to verify syntax
       - id: debug-statements           # Check for debugger imports and py37+ `breakpoint()` calls in python source
       - id: detect-private-key         # Detects the presence of private keys
@@ -22,23 +20,14 @@ repos:
           - --pytest-test-first
       - id: trailing-whitespace        # This hook trims trailing whitespace
 
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.7
     hooks:
-      - id: flake8
-        additional_dependencies: [
-          flake8-blind-except,      # check for blind, catch-all "except:" statements
-          flake8-bugbear,           # find likely bugs and design problems
-          flake8-builtins,          # check for python builtins being used as variables or parameters
-          flake8-fixme,             # check for FIXME, TODO and other temporary developer notes
-          flake8-logging-format,    # validate (lack of) logging format strings
-          flake8-markdown,          # lint Python code blocks in Markdown files using flake8
-          flake8-pep3101,           # check for old string formatting
-          flake8-print,             # check for print statements
-          flake8-use-fstring,       # enforce use of f-string
-          flake8-2020,              # check for misuse of `sys.version` or `sys.version_info`
-          pep8-naming,              # check PEP-8 naming conventions
-        ]
+      # run the linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      # run the formatter
+      - id: ruff-format
 
   - repo: https://github.com/asottile/add-trailing-comma
     rev: v2.3.0
@@ -63,18 +52,6 @@ repos:
         args:
           - --py310-plus
           - --keep-runtime-typing
-
-  - repo: https://github.com/asottile/setup-cfg-fmt
-    rev: v2.2.0
-    hooks:
-    - id: setup-cfg-fmt
-      args:
-        - --include-version-classifiers
-
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
-    hooks:
-    - id: black
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
