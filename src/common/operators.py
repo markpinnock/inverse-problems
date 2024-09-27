@@ -17,7 +17,7 @@ class ConvolutionMode(int, enum.Enum):
 def custom_operator_1d(
     kernel: npt.NDArray[np.float32],
     matrix_size: int,
-    conv_mode: str | ConvolutionMode,
+    conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
 ) -> sp.csr_array:
     """Create a 1D sparse convolutional matrix for a custom kernel.
 
