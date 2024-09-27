@@ -8,6 +8,18 @@ import scipy.sparse as sp
 
 
 class ConvolutionMode(int, enum.Enum):
+    """Convolution modes for creating sparse operators.
+
+    Notes
+    -----
+        For a kernel of size K with image vector length N:
+        - `full` convolution mode is equivalent to full zero-padding both sides of the input (N + K - 1).
+        - `same` convolution mode is equivalent to half zero-padding both sides of the input (N).
+        - `valid` convolution mode is equivalent to no padding (output N - K + 1).
+        - `periodic` convolution mode is equivalent to circular padding the input (N).
+
+    """
+
     FULL = "full"
     SAME = "same"
     VALID = "valid"
@@ -33,18 +45,10 @@ def custom_operator_1d(
     matrix_size: int,
     conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
 ) -> sp.csr_array:
-    """Create a 1D sparse convolutional matrix for a custom kernel.
+    """Create a 1D sparse convolutional matrix for a 1D custom kernel.
 
     Adapted from:
         https://dsp.stackexchange.com/questions/76344/generate-the-matrix-form-of-1d-convolution-kernel
-
-    Notes
-    -----
-        - The kernel is assumed to be 1D of size K with image vector length N.
-        - `full` convolution mode is equivalent to full zero-padding both sides of the input (N + K - 1).
-        - `same` convolution mode is equivalent to half zero-padding both sides of the input (N).
-        - `valid` convolution mode is equivalent to no padding (output N - K + 1).
-        - `periodic` convolution mode is equivalent to circular padding the input (N).
 
     Args:
         kernel: the custom 1D kernel as a numpy array
