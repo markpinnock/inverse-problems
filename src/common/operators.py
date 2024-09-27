@@ -40,6 +40,37 @@ def identity_operator(img: npt.NDArray[np.uint8 | np.float32]) -> sp.dia_matrix:
     return sp.eye(np.prod(img.shape))
 
 
+def dx_operator(
+    img: npt.NDArray[np.uint8 | np.float32],
+    conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
+) -> sp.csr_matrix:
+    """Create derivative operator in the x-direction.
+
+    Args:
+        img: The input image.
+        conv_mode: The convolutional mode. Either "valid" or "periodic".
+
+    Returns
+    -------
+        Sparse x-direction difference operator
+
+    """
+    flat_dims = np.prod(img.shape)
+    vals = np.ones((2, flat_dims)) * np.array([[-1], [1]])
+
+    if conv_mode == ConvolutionMode.VALID:
+        Dx = sp.spdiags(vals, [0, 1], flat_dims - 1, flat_dims)
+
+    elif conv_mode == ConvolutionMode.PERIODIC:
+        Dx = sp.spdiags(vals, [0, 1], flat_dims, flat_dims).tolil()
+        Dx[-1, 0] = 1
+
+    else:
+        raise ValueError(f"Convolution mode `{conv_mode}` currently not supported")
+
+    return Dx.tocsr()
+
+
 def custom_operator_1d(
     kernel: npt.NDArray[np.float32],
     matrix_size: int,
@@ -54,6 +85,10 @@ def custom_operator_1d(
         kernel: the custom 1D kernel as a numpy array
         matrix_size: the length of the vectorised image
         conv_mode: the convolution shape (full, same, valid, periodic)
+
+    Returns
+    -------
+        Sparse 1D operator
 
     """
     if kernel.ndim != 1:
