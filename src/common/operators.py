@@ -14,6 +14,20 @@ class ConvolutionMode(int, enum.Enum):
     PERIODIC = "periodic"
 
 
+def identity_operator(img: npt.NDArray[np.uint8 | np.float32]) -> sp.dia_matrix:
+    """Create identity operator.
+
+    Args:
+        img: The input image.
+
+    Returns
+    -------
+        Sparse identity matrix
+
+    """
+    return sp.eye(np.prod(img.shape))
+
+
 def custom_operator_1d(
     kernel: npt.NDArray[np.float32],
     matrix_size: int,
