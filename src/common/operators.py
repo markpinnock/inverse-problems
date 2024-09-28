@@ -153,6 +153,36 @@ def laplacian_operator(
     return -D.T @ D
 
 
+def perona_malik_operator(
+    img: npt.NDArray[np.uint8 | np.float32],
+    conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
+) -> sp.csr_matrix:
+    """Create Perona-Malik operator for a 2D image.
+
+    Args:
+        img: The input image.
+        conv_mode: The convolutional mode. Either "valid" or "periodic".
+
+    Returns
+    -------
+        Sparse Perona-Malik operator
+
+    """
+    Dx = dx_operator(img, conv_mode=conv_mode)
+    Dy = dy_operator(img, conv_mode=conv_mode)
+
+    img = img.reshape([-1, 1])
+    img_dx = Dx @ img
+    img_dy = Dy @ img
+
+    abs_derivative = np.sqrt(np.square(img_dx) + np.square(img_dy))
+    threshold = 0.5 * np.max(abs_derivative)
+    gamma = np.exp(-abs_derivative / threshold)
+    gamma_diag_hat = np.sqrt(sp.diags(gamma.ravel()))
+
+    return sp.vstack([gamma_diag_hat @ Dx, gamma_diag_hat @ Dy])
+
+
 def custom_operator_1d(
     kernel: npt.NDArray[np.float32],
     matrix_size: int,
