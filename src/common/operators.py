@@ -71,6 +71,35 @@ def dx_operator(
     return Dx.tocsr()
 
 
+def dy_operator(
+    img: npt.NDArray[np.uint8 | np.float32],
+    conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
+) -> sp.csr_matrix:
+    """Create derivative operator in the y-direction.
+
+    Args:
+        img: The input image.
+        conv_mode: The convolutional mode. Either "valid" or "periodic".
+
+    Returns
+    -------
+        Sparse y-direction difference operator
+
+    """
+    dims = img.shape
+    flat_dims = np.prod(dims)
+    vals = np.ones((2, flat_dims)) * np.array([[-1], [1]])
+
+    if conv_mode == ConvolutionMode.VALID:
+        Dy = sp.spdiags(vals, [0, dims[1]], flat_dims - dims[1], flat_dims)
+
+    elif conv_mode == ConvolutionMode.PERIODIC:
+        Dy = sp.spdiags(vals, [0, dims[1]], flat_dims, flat_dims).tolil()
+        Dy[-dims[1] :, 0 : dims[1]] = sp.eye(dims[1])
+
+    return Dy.tocsr()
+
+
 def custom_operator_1d(
     kernel: npt.NDArray[np.float32],
     matrix_size: int,
