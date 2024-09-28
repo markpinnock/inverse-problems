@@ -133,6 +133,26 @@ def derivative_operator(
     return D
 
 
+def laplacian_operator(
+    img: npt.NDArray[np.uint8 | np.float32],
+    conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
+) -> sp.csr_matrix:
+    """Create Laplacian operator for a 2D image.
+
+    Args:
+        img: The input image.
+        conv_mode: The convolutional mode. Either "valid" or "periodic".
+
+    Returns
+    -------
+        Sparse Laplacian operator
+
+    """
+    D = derivative_operator(img, conv_mode=conv_mode)
+
+    return -D.T @ D
+
+
 def custom_operator_1d(
     kernel: npt.NDArray[np.float32],
     matrix_size: int,
