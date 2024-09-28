@@ -7,7 +7,7 @@ import numpy.typing as npt
 import scipy.sparse as sp
 
 
-class ConvolutionMode(int, enum.Enum):
+class ConvolutionMode(str, enum.Enum):
     """Convolution modes for creating sparse operators.
 
     Notes
