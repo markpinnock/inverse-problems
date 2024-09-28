@@ -97,7 +97,40 @@ def dy_operator(
         Dy = sp.spdiags(vals, [0, dims[1]], flat_dims, flat_dims).tolil()
         Dy[-dims[1] :, 0 : dims[1]] = sp.eye(dims[1])
 
+    else:
+        raise ValueError(f"Convolution mode `{conv_mode}` currently not supported")
+
     return Dy.tocsr()
+
+
+def derivative_operator(
+    img: npt.NDArray[np.uint8 | np.float32],
+    conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
+) -> sp.csr_matrix:
+    """Create derivative operator for a 2D image.
+
+    Notes
+    -----
+        The derivative operator is the concatenation of the x and y derivative operators.
+
+    Args:
+        img: The input image.
+        conv_mode: The convolutional mode. Either "valid" or "periodic".
+
+    Returns
+    -------
+        Sparse derivative operator
+
+    """
+    Dx = dx_operator(img, conv_mode=conv_mode)
+    Dy = dy_operator(img, conv_mode=conv_mode)
+    D = sp.vstack([Dx, Dy])
+
+    u = np.random.random(D.shape[1])
+    v = np.random.random(D.shape[0])
+    assert np.isclose(((D @ u).T @ v), u @ (D.T @ v))
+
+    return D
 
 
 def custom_operator_1d(
