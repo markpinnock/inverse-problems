@@ -262,4 +262,4 @@ def custom_operator_1d(
                 values[mtx_idx] = kernel[kernel_idx]
                 mtx_idx += 1
 
-    return sp.csr_array((values, (j_idx, i_idx)))
+    return sp.csr_array((values, (i_idx, j_idx)))
