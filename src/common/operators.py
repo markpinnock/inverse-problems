@@ -185,17 +185,17 @@ def perona_malik_operator(
 
 def custom_operator_1d(
     kernel: npt.NDArray[np.float32],
-    matrix_size: int,
+    arr_size: int,
     conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
 ) -> sp.csr_array:
-    """Create a 1D sparse convolutional matrix for a 1D custom kernel.
+    """Create a sparse convolutional matrix for a 1D custom kernel.
 
     Adapted from:
         https://dsp.stackexchange.com/questions/76344/generate-the-matrix-form-of-1d-convolution-kernel
 
     Args:
         kernel: the custom 1D kernel as a numpy array
-        matrix_size: the length of the vectorised image
+        arr_size: the length of the array
         conv_mode: the convolution shape (full, same, valid, periodic)
 
     Returns
@@ -206,60 +206,54 @@ def custom_operator_1d(
     if kernel.ndim != 1:
         raise ValueError("The kernel must be 1D.")
 
-    kernel_length = kernel.shape[0]
-    kernel = kernel[::-1]  # Original code ported from MATLAB (col vs. row ordering)
+    kernel_size = kernel.shape[0]
 
     # Determine convolution mode
     match conv_mode:
         case ConvolutionMode.FULL:
-            row_first_idx = 0
-            row_last_idx = kernel_length + matrix_size - 1
-            periodic = False
+            input_size = arr_size + kernel_size - 1
+            kernel_width = kernel_size - 1
 
         case ConvolutionMode.SAME:
-            row_first_idx = kernel_length // 2
-            row_last_idx = row_first_idx + matrix_size - 1
-            periodic = False
+            input_size = arr_size
+            kernel_width = kernel_size // 2
 
         case ConvolutionMode.VALID:
-            row_first_idx = kernel_length - 1
-            row_last_idx = matrix_size - 1
-            periodic = False
+            input_size = arr_size - kernel_size + 1
 
         case ConvolutionMode.PERIODIC:
-            row_first_idx = kernel_length // 2
-            row_last_idx = row_first_idx + matrix_size - 1
-            periodic = True
+            input_size = arr_size
+            kernel_width = kernel_size // 2
 
-    mtx_idx = 0
+    conv_matrix = sp.lil_matrix((input_size, arr_size))
 
-    i_idx = np.zeros(matrix_size * kernel_length, dtype=np.uint32)
-    j_idx = np.zeros(matrix_size * kernel_length, dtype=np.uint32)
-    values = np.zeros(matrix_size * kernel_length)
+    # Loop through each element in array
+    for row_idx in range(input_size):
+        # Loop through each element in the kernel
+        for kernel_idx in range(kernel_size):
+            match conv_mode:
+                case ConvolutionMode.FULL:
+                    # Shift column index back by full kernel width
+                    col_idx = row_idx + kernel_idx - kernel_width
 
-    # Loop through rows of matrix and allocate kernel to correct position
-    for row_idx in range(matrix_size):
-        for kernel_idx in range(kernel_length):
-            if (
-                kernel_idx + row_idx >= row_first_idx
-                and kernel_idx + row_idx <= row_last_idx
-            ):
-                i_idx[mtx_idx] = kernel_idx + row_idx - row_first_idx
-                j_idx[mtx_idx] = row_idx
-                values[mtx_idx] = kernel[kernel_idx]
-                mtx_idx += 1
+                    if 0 <= col_idx < arr_size:
+                        conv_matrix[row_idx, col_idx] = kernel[kernel_idx]
 
-            # Account for periodic boundary conditions if necessary
-            if periodic and kernel_idx + row_idx < row_first_idx:
-                i_idx[mtx_idx] = matrix_size + kernel_idx + row_idx - row_first_idx
-                j_idx[mtx_idx] = row_idx
-                values[mtx_idx] = kernel[kernel_idx]
-                mtx_idx += 1
+                case ConvolutionMode.SAME:
+                    # Shift column index back by half kernel width
+                    col_idx = row_idx + kernel_idx - kernel_width
 
-            elif periodic and kernel_idx + row_idx > row_last_idx:
-                i_idx[mtx_idx] = kernel_idx + row_idx - row_last_idx - 1
-                j_idx[mtx_idx] = row_idx
-                values[mtx_idx] = kernel[kernel_idx]
-                mtx_idx += 1
+                    if 0 <= col_idx < arr_size:
+                        conv_matrix[row_idx, col_idx] = kernel[kernel_idx]
 
-    return sp.csr_array((values, (i_idx, j_idx)))
+                case ConvolutionMode.VALID:
+                    # No shift necessary for valid convolution
+                    col_idx = row_idx + kernel_idx
+                    conv_matrix[row_idx, col_idx] = kernel[kernel_idx]
+
+                case ConvolutionMode.PERIODIC:
+                    # Compute periodic (wrapped) column index
+                    col_idx = (row_idx + kernel_idx - kernel_width) % input_size
+                    conv_matrix[row_idx, col_idx] = kernel[kernel_idx]
+
+    return conv_matrix.tocsr()
