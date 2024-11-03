@@ -254,3 +254,90 @@ def custom_operator_1d(
                     conv_matrix[row_idx, col_idx] = kernel[kernel_idx]
 
     return conv_matrix.tocsr()
+
+
+def custom_operator_2d(kernel: npt.NDArray[np.float32], image_size: int, conv_mode: str | ConvolutionMode = ConvolutionMode.SAME):
+    """Create a sparse convolutional matrix for a 2D custom kernel.
+
+    Args:
+        kernel: the custom 2D kernel as a numpy array
+        arr_size: the length of the array
+        conv_mode: the convolution shape (full, same, valid, periodic)
+
+    Returns
+    -------
+        Sparse 2D operator
+
+    """
+    if kernel.ndim != 2:
+        raise ValueError("The kernel must be 2D.")
+
+    if kernel.shape[0] != kernel.shape[1]:
+        raise ValueError("Currently only square kernels supported.")
+
+    kernel_size = kernel.shape[0]
+
+    # Determine convolution mode
+    match conv_mode:
+        case ConvolutionMode.FULL:
+            input_size = image_size + kernel_size - 1
+            kernel_width = kernel_size - 1
+
+        case ConvolutionMode.SAME:
+            input_size = image_size
+            kernel_width = kernel_size // 2
+
+        case ConvolutionMode.VALID:
+            input_size = image_size - kernel_size + 1
+
+        case ConvolutionMode.PERIODIC:
+            input_size = image_size
+            kernel_width = kernel_size // 2
+
+    # Initialize the convolution matrix as a sparse matrix
+    conv_matrix = sp.lil_matrix((input_size ** 2, image_size ** 2))
+
+    # Loop through each pixel in image
+    for i in range(input_size):
+        for j in range(input_size):
+
+            # Define the row of this pixel in the output matrix
+            row_idx = i * input_size + j
+
+            # Loop through each element in the kernel
+            for ki in range(kernel_size):
+                for kj in range(kernel_size):
+                    match conv_mode:
+                        case ConvolutionMode.FULL:
+                            ni = i + ki - kernel_width * 2
+                            nj = j + kj - kernel_width * 2
+                            col_idx = ni * image_size + nj
+
+                            if (0 <= ni < image_size) and (0 <= nj < image_size):                            
+                                conv_matrix[row_idx, col_idx] = kernel[ki - kernel_width, kj - kernel_width]
+
+                        case ConvolutionMode.SAME:
+                            ni = i + ki - kernel_width
+                            nj = j + kj - kernel_width
+
+                            if (0 <= ni < image_size) and (0 <= nj < image_size):
+                                col_idx = ni * image_size + nj
+                                conv_matrix[row_idx, col_idx] = kernel[ki, kj]
+
+                        case ConvolutionMode.VALID:
+                            # if (pad_size <= i + ki < matrix_size) and (pad_size <= j + kj < matrix_size):
+                            ni = i + ki
+                            nj = j + kj
+                            col_idx = ni * image_size + nj
+                            conv_matrix[row_idx, col_idx] = kernel[ki, kj]
+
+                        case ConvolutionMode.PERIODIC:
+                            # Compute periodic (wrapped) indices for the matrix position
+                            ni = (i + ki - kernel_width) % image_size
+                            nj = (j + kj - kernel_width) % image_size
+                            col_idx = ni * image_size + nj
+
+                            # Place the kernel value in the appropriate location
+                            conv_matrix[row_idx, col_idx] = kernel[ki, kj]
+
+    return conv_matrix.tocsr()
