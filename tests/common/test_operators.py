@@ -1,6 +1,12 @@
-import numpy as np
+"""Unit tests for operators."""
 
-from common.operators import identity_operator
+from typing import Any
+
+import numpy as np
+import numpy.typing as npt
+import pytest
+
+from common.operators import custom_operator_1d, identity_operator
 
 
 def test_identity_operator() -> None:
@@ -11,3 +17,57 @@ def test_identity_operator() -> None:
     assert operator.shape == (16, 16)
     assert np.allclose(operator.toarray(), np.eye(16))
     assert np.allclose(operator @ img.flatten(), img.flatten())
+
+
+@pytest.mark.parametrize(
+    ("conv_mode", "arr_size", "expected_operator"),
+    [
+        ("valid", 4, "valid_4_first_order_1d"),
+        ("valid", 5, "valid_5_first_order_1d"),
+        ("same", 4, "same_4_first_order_1d"),
+        ("same", 5, "same_5_first_order_1d"),
+        ("periodic", 4, "periodic_4_first_order_1d"),
+        ("periodic", 5, "periodic_5_first_order_1d"),
+        ("full", 4, "full_4_first_order_1d"),
+        ("full", 5, "full_5_first_order_1d"),
+    ],
+)  # type: ignore[misc]
+def test_custom_operator_1d_even(
+    conv_mode: str,
+    arr_size: int,
+    expected_operator: npt.NDArray[np.float64],
+    request: Any,
+) -> None:
+    """Test custom 1D operator for even kernels."""
+    expected_operator = request.getfixturevalue(expected_operator)
+    kernel = np.array([-1, 1])
+
+    operator = custom_operator_1d(kernel=kernel, arr_size=arr_size, conv_mode=conv_mode)
+    assert np.equal(operator.toarray(), expected_operator).all()
+
+
+@pytest.mark.parametrize(
+    ("conv_mode", "arr_size", "expected_operator"),
+    [
+        ("valid", 4, "valid_4_second_order_1d"),
+        ("valid", 5, "valid_5_second_order_1d"),
+        ("same", 4, "same_4_second_order_1d"),
+        ("same", 5, "same_5_second_order_1d"),
+        ("periodic", 4, "periodic_4_second_order_1d"),
+        ("periodic", 5, "periodic_5_second_order_1d"),
+        ("full", 4, "full_4_second_order_1d"),
+        ("full", 5, "full_5_second_order_1d"),
+    ],
+)  # type: ignore[misc]
+def test_custom_operator_1d_odd(
+    conv_mode: str,
+    arr_size: int,
+    expected_operator: npt.NDArray[np.float64],
+    request: Any,
+) -> None:
+    """Test custom 1D operator for odd kernels."""
+    expected_operator = request.getfixturevalue(expected_operator)
+    kernel = np.array([1, -2, 1])
+
+    operator = custom_operator_1d(kernel=kernel, arr_size=arr_size, conv_mode=conv_mode)
+    assert np.equal(operator.toarray(), expected_operator).all()
