@@ -1,5 +1,6 @@
 """Unit tests for operators."""
 
+# mypy: disable-error-code="misc"
 from typing import Any
 
 import numpy as np
@@ -31,7 +32,7 @@ def test_identity_operator() -> None:
         ("full", 4, "full_4_first_order_1d"),
         ("full", 5, "full_5_first_order_1d"),
     ],
-)  # type: ignore[misc]
+)
 def test_custom_operator_1d_even(
     conv_mode: str,
     arr_size: int,
@@ -58,7 +59,7 @@ def test_custom_operator_1d_even(
         ("full", 4, "full_4_second_order_1d"),
         ("full", 5, "full_5_second_order_1d"),
     ],
-)  # type: ignore[misc]
+)
 def test_custom_operator_1d_odd(
     conv_mode: str,
     arr_size: int,
