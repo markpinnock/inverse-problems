@@ -190,9 +190,6 @@ def custom_operator_1d(
 ) -> sp.csr_array:
     """Create a sparse convolutional matrix for a 1D custom kernel.
 
-    Adapted from:
-        https://dsp.stackexchange.com/questions/76344/generate-the-matrix-form-of-1d-convolution-kernel
-
     Args:
         kernel: the custom 1D kernel as a numpy array
         arr_size: the length of the array
