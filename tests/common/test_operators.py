@@ -36,7 +36,7 @@ def test_identity_operator() -> None:
 def test_custom_operator_1d_even(
     conv_mode: str,
     arr_size: int,
-    expected_operator: npt.NDArray[np.float64],
+    expected_operator: npt.NDArray,
     request: Any,
 ) -> None:
     """Test custom 1D operator for even kernels."""
@@ -63,7 +63,7 @@ def test_custom_operator_1d_even(
 def test_custom_operator_1d_odd(
     conv_mode: str,
     arr_size: int,
-    expected_operator: npt.NDArray[np.float64],
+    expected_operator: npt.NDArray,
     request: Any,
 ) -> None:
     """Test custom 1D operator for odd kernels."""
