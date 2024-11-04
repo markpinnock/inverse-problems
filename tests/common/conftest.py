@@ -188,3 +188,127 @@ def full_5_second_order_1d() -> npt.NDArray[np.float64]:
         ],
         dtype=np.float64,
     )
+
+
+@pytest.fixture
+def valid_4_first_order_2d(valid_4_first_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix."""
+    block = valid_4_first_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, block, zero, zero]),
+            np.hstack([zero, block, block, zero]),
+            np.hstack([zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def valid_5_first_order_2d(valid_5_first_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix."""
+    block = valid_5_first_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, block, zero, zero, zero]),
+            np.hstack([zero, block, block, zero, zero]),
+            np.hstack([zero, zero, block, block, zero]),
+            np.hstack([zero, zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def same_4_first_order_2d(same_4_first_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix."""
+    block = same_4_first_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, zero, zero, zero]),
+            np.hstack([block, block, zero, zero]),
+            np.hstack([zero, block, block, zero]),
+            np.hstack([zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def same_5_first_order_2d(same_5_first_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix."""
+    block = same_5_first_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, zero, zero, zero, zero]),
+            np.hstack([block, block, zero, zero, zero]),
+            np.hstack([zero, block, block, zero, zero]),
+            np.hstack([zero, zero, block, block, zero]),
+            np.hstack([zero, zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def periodic_4_first_order_2d(periodic_4_first_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix."""
+    block = periodic_4_first_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, zero, zero, block]),
+            np.hstack([block, block, zero, zero]),
+            np.hstack([zero, block, block, zero]),
+            np.hstack([zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def periodic_5_first_order_2d(periodic_5_first_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix."""
+    block = periodic_5_first_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, zero, zero, zero, block]),
+            np.hstack([block, block, zero, zero, zero]),
+            np.hstack([zero, block, block, zero, zero]),
+            np.hstack([zero, zero, block, block, zero]),
+            np.hstack([zero, zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def full_4_first_order_2d(full_4_first_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix."""
+    block = full_4_first_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, zero, zero, zero]),
+            np.hstack([block, block, zero, zero]),
+            np.hstack([zero, block, block, zero]),
+            np.hstack([zero, zero, block, block]),
+            np.hstack([zero, zero, zero, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def full_5_first_order_2d(full_5_first_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix."""
+    block = full_5_first_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, zero, zero, zero, zero]),
+            np.hstack([block, block, zero, zero, zero]),
+            np.hstack([zero, block, block, zero, zero]),
+            np.hstack([zero, zero, block, block, zero]),
+            np.hstack([zero, zero, zero, block, block]),
+            np.hstack([zero, zero, zero, zero, block]),
+        ],
+    )
