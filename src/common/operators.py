@@ -298,46 +298,46 @@ def custom_operator_2d(kernel: npt.NDArray[np.float32], image_size: int, conv_mo
     conv_matrix = sp.lil_matrix((input_size ** 2, image_size ** 2))
 
     # Loop through each pixel in image
-    for i in range(input_size):
-        for j in range(input_size):
+    for img_i in range(input_size):
+        for img_j in range(input_size):
 
             # Define the row of this pixel in the output matrix
-            row_idx = i * input_size + j
+            row_idx = img_i * input_size + img_j
 
             # Loop through each element in the kernel
-            for ki in range(kernel_size):
-                for kj in range(kernel_size):
+            for ker_i in range(kernel_size):
+                for ker_j in range(kernel_size):
                     match conv_mode:
                         case ConvolutionMode.FULL:
-                            ni = i + ki - kernel_width * 2
-                            nj = j + kj - kernel_width * 2
-                            col_idx = ni * image_size + nj
+                            # Shift column index back by full kernel width
+                            offset_i = img_i + ker_i - kernel_width
+                            offset_j = img_j + ker_j - kernel_width
+                            col_idx = offset_i * image_size + offset_j
 
-                            if (0 <= ni < image_size) and (0 <= nj < image_size):                            
-                                conv_matrix[row_idx, col_idx] = kernel[ki - kernel_width, kj - kernel_width]
+                            if (0 <= offset_i < image_size) and (0 <= offset_j < image_size):                            
+                                conv_matrix[row_idx, col_idx] = kernel[ker_i, ker_j]
 
                         case ConvolutionMode.SAME:
-                            ni = i + ki - kernel_width
-                            nj = j + kj - kernel_width
+                            # Shift column index back by half kernel width
+                            offset_i = img_i + ker_i - kernel_width
+                            offset_j = img_j + ker_j - kernel_width
 
-                            if (0 <= ni < image_size) and (0 <= nj < image_size):
-                                col_idx = ni * image_size + nj
-                                conv_matrix[row_idx, col_idx] = kernel[ki, kj]
+                            if (0 <= offset_i < image_size) and (0 <= offset_j < image_size):
+                                col_idx = offset_i * image_size + offset_j
+                                conv_matrix[row_idx, col_idx] = kernel[ker_i, ker_j]
 
                         case ConvolutionMode.VALID:
-                            # if (pad_size <= i + ki < matrix_size) and (pad_size <= j + kj < matrix_size):
-                            ni = i + ki
-                            nj = j + kj
-                            col_idx = ni * image_size + nj
-                            conv_matrix[row_idx, col_idx] = kernel[ki, kj]
+                            # No shift necessary for valid convolution
+                            offset_i = img_i + ker_i
+                            offset_j = img_j + ker_j
+                            col_idx = offset_i * image_size + offset_j
+                            conv_matrix[row_idx, col_idx] = kernel[ker_i, ker_j]
 
                         case ConvolutionMode.PERIODIC:
-                            # Compute periodic (wrapped) indices for the matrix position
-                            ni = (i + ki - kernel_width) % image_size
-                            nj = (j + kj - kernel_width) % image_size
-                            col_idx = ni * image_size + nj
-
-                            # Place the kernel value in the appropriate location
-                            conv_matrix[row_idx, col_idx] = kernel[ki, kj]
+                            # Compute periodic (wrapped) column index
+                            offset_i = (img_i + ker_i - kernel_width) % image_size
+                            offset_j = (img_j + ker_j - kernel_width) % image_size
+                            col_idx = offset_i * image_size + offset_j
+                            conv_matrix[row_idx, col_idx] = kernel[ker_i, ker_j]
 
     return conv_matrix.tocsr()
