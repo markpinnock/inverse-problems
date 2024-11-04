@@ -40,35 +40,27 @@ def identity_operator(img: npt.NDArray[np.uint8 | np.float32]) -> sp.dia_matrix:
     return sp.eye(np.prod(img.shape))
 
 
-def dx_operator(
-    img: npt.NDArray[np.uint8 | np.float32],
+def dx_operator_1d(
+    arr: npt.NDArray[np.uint8 | np.float32],
     conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
 ) -> sp.csr_matrix:
-    """Create derivative operator in the x-direction.
+    """Create derivative operator for 1D arrays.
 
     Args:
-        img: The input image.
-        conv_mode: The convolutional mode: `valid`, `same` or `periodic`.
+        img: The input array.
+        conv_mode: The convolutional mode (full, same, valid, periodic).
 
     Returns
     -------
-        Sparse x-direction difference operator
+        Sparse difference operator
 
     """
-    flat_dims = np.prod(img.shape)
-    vals = np.ones((2, flat_dims)) * np.array([[-1], [1]])
+    if arr.ndim > 1:
+        raise ValueError("The input array must be 1D.")
 
-    if conv_mode == ConvolutionMode.VALID:
-        Dx = sp.spdiags(vals, [0, 1], flat_dims - 1, flat_dims)
-
-    elif conv_mode == ConvolutionMode.PERIODIC:
-        Dx = sp.spdiags(vals, [0, 1], flat_dims, flat_dims).tolil()
-        Dx[-1, 0] = 1
-
-    else:
-        raise ValueError(f"Convolution mode `{conv_mode}` currently not supported")
-
-    return Dx.tocsr()
+    return custom_operator_1d(
+        kernel=np.array([-1, 1]), arr_size=arr.shape[0], conv_mode=conv_mode,
+    )
 
 
 def dy_operator(
