@@ -93,9 +93,40 @@ def test_custom_operator_2d_even(
     expected_operator: npt.NDArray,
     request: Any,
 ) -> None:
-    """Test custom 2D operator for odd kernels."""
+    """Test custom 2D operator for even kernels."""
     expected_operator = request.getfixturevalue(expected_operator)
     kernel = np.array([[-1, 1], [-1, 1]])
+
+    operator = custom_operator_2d(
+        kernel=kernel,
+        image_size=img_size,
+        conv_mode=conv_mode,
+    )
+    assert np.equal(operator.toarray(), expected_operator).all()
+
+
+@pytest.mark.parametrize(
+    ("conv_mode", "img_size", "expected_operator"),
+    [
+        ("valid", 4, "valid_4_second_order_2d"),
+        ("valid", 5, "valid_5_second_order_2d"),
+        ("same", 4, "same_4_second_order_2d"),
+        ("same", 5, "same_5_second_order_2d"),
+        ("periodic", 4, "periodic_4_second_order_2d"),
+        ("periodic", 5, "periodic_5_second_order_2d"),
+        ("full", 4, "full_4_second_order_2d"),
+        ("full", 5, "full_5_second_order_2d"),
+    ],
+)
+def test_custom_operator_2d_odd(
+    conv_mode: str,
+    img_size: int,
+    expected_operator: npt.NDArray,
+    request: Any,
+) -> None:
+    """Test custom 2D operator for odd kernels."""
+    expected_operator = request.getfixturevalue(expected_operator)
+    kernel = np.array([[1, -2, 1], [1, -2, 1], [1, -2, 1]])
 
     operator = custom_operator_2d(
         kernel=kernel,
