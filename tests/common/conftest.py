@@ -7,13 +7,13 @@ import pytest
 
 
 @pytest.fixture
-def valid_4_first_order_1d() -> npt.NDArray[np.float64]:
+def valid_4_first_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array([[-1, 1, 0, 0], [0, -1, 1, 0], [0, 0, -1, 1]], dtype=np.float64)
 
 
 @pytest.fixture
-def valid_5_first_order_1d() -> npt.NDArray[np.float64]:
+def valid_5_first_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [[-1, 1, 0, 0, 0], [0, -1, 1, 0, 0], [0, 0, -1, 1, 0], [0, 0, 0, -1, 1]],
@@ -22,7 +22,7 @@ def valid_5_first_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def same_4_first_order_1d() -> npt.NDArray[np.float64]:
+def same_4_first_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [[1, 0, 0, 0], [-1, 1, 0, 0], [0, -1, 1, 0], [0, 0, -1, 1]],
@@ -31,7 +31,7 @@ def same_4_first_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def same_5_first_order_1d() -> npt.NDArray[np.float64]:
+def same_5_first_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [
@@ -46,7 +46,7 @@ def same_5_first_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def periodic_4_first_order_1d() -> npt.NDArray[np.float64]:
+def periodic_4_first_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [[1, 0, 0, -1], [-1, 1, 0, 0], [0, -1, 1, 0], [0, 0, -1, 1]],
@@ -55,7 +55,7 @@ def periodic_4_first_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def periodic_5_first_order_1d() -> npt.NDArray[np.float64]:
+def periodic_5_first_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [
@@ -70,7 +70,7 @@ def periodic_5_first_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def full_4_first_order_1d() -> npt.NDArray[np.float64]:
+def full_4_first_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [[1, 0, 0, 0], [-1, 1, 0, 0], [0, -1, 1, 0], [0, 0, -1, 1], [0, 0, 0, -1]],
@@ -79,7 +79,7 @@ def full_4_first_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def full_5_first_order_1d() -> npt.NDArray[np.float64]:
+def full_5_first_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [
@@ -95,13 +95,13 @@ def full_5_first_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def valid_4_second_order_1d() -> npt.NDArray[np.float64]:
+def valid_4_second_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array([[1, -2, 1, 0], [0, 1, -2, 1]], dtype=np.float64)
 
 
 @pytest.fixture
-def valid_5_second_order_1d() -> npt.NDArray[np.float64]:
+def valid_5_second_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [[1, -2, 1, 0, 0], [0, 1, -2, 1, 0], [0, 0, 1, -2, 1]],
@@ -110,7 +110,7 @@ def valid_5_second_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def same_4_second_order_1d() -> npt.NDArray[np.float64]:
+def same_4_second_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [[-2, 1, 0, 0], [1, -2, 1, 0], [0, 1, -2, 1], [0, 0, 1, -2]],
@@ -119,7 +119,7 @@ def same_4_second_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def same_5_second_order_1d() -> npt.NDArray[np.float64]:
+def same_5_second_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [
@@ -134,7 +134,7 @@ def same_5_second_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def periodic_4_second_order_1d() -> npt.NDArray[np.float64]:
+def periodic_4_second_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [[-2, 1, 0, 1], [1, -2, 1, 0], [0, 1, -2, 1], [1, 0, 1, -2]],
@@ -143,7 +143,7 @@ def periodic_4_second_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def periodic_5_second_order_1d() -> npt.NDArray[np.float64]:
+def periodic_5_second_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [
@@ -158,7 +158,7 @@ def periodic_5_second_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def full_4_second_order_1d() -> npt.NDArray[np.float64]:
+def full_4_second_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [
@@ -174,7 +174,7 @@ def full_4_second_order_1d() -> npt.NDArray[np.float64]:
 
 
 @pytest.fixture
-def full_5_second_order_1d() -> npt.NDArray[np.float64]:
+def full_5_second_order_1d() -> npt.NDArray:
     """Return 1D convolution matrix."""
     return np.array(
         [
