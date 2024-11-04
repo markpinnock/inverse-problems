@@ -7,7 +7,12 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from common.operators import custom_operator_1d, custom_operator_2d, identity_operator
+from common.operators import (
+    ConvolutionMode,
+    custom_operator_1d,
+    custom_operator_2d,
+    identity_operator,
+)
 
 
 def test_identity_operator() -> None:
@@ -134,3 +139,24 @@ def test_custom_operator_2d_odd(
         conv_mode=conv_mode,
     )
     assert np.equal(operator.toarray(), expected_operator).all()
+
+
+@pytest.mark.parametrize(("conv_mode"), ["valid", "same", "periodic", "full"])
+def test_dx_operator_1d(conv_mode: str) -> None:
+    """Test dx operator for 1D."""
+    arr = np.array([1, 2, 4, 8])
+    dx = custom_operator_1d(
+        kernel=np.array([-1, 1]),
+        arr_size=len(arr),
+        conv_mode=conv_mode,
+    )
+
+    match conv_mode:
+        case ConvolutionMode.VALID:
+            assert np.equal(dx @ arr, np.diff(arr)).all()
+        case ConvolutionMode.SAME:
+            assert np.equal(dx @ arr, np.diff(arr, prepend=0)).all()
+        case ConvolutionMode.PERIODIC:
+            assert np.equal(dx @ arr, np.diff(arr, prepend=8)).all()
+        case ConvolutionMode.FULL:
+            assert np.equal(dx @ arr, np.diff(arr, prepend=0, append=0)).all()
