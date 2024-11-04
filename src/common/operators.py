@@ -30,7 +30,7 @@ def identity_operator(img: npt.NDArray[np.uint8 | np.float32]) -> sp.dia_matrix:
     """Create identity operator.
 
     Args:
-        img: The input image.
+        img: The input image/array.
 
     Returns
     -------
@@ -48,7 +48,7 @@ def dx_operator(
 
     Args:
         img: The input image.
-        conv_mode: The convolutional mode. Either "valid" or "periodic".
+        conv_mode: The convolutional mode: `valid`, `same` or `periodic`.
 
     Returns
     -------
@@ -184,7 +184,7 @@ def perona_malik_operator(
 
 
 def custom_operator_1d(
-    kernel: npt.NDArray[np.float32],
+    kernel: npt.NDArray,
     arr_size: int,
     conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
 ) -> sp.csr_array:
@@ -256,7 +256,11 @@ def custom_operator_1d(
     return conv_matrix.tocsr()
 
 
-def custom_operator_2d(kernel: npt.NDArray[np.float32], image_size: int, conv_mode: str | ConvolutionMode = ConvolutionMode.SAME):
+def custom_operator_2d(
+    kernel: npt.NDArray,
+    image_size: int,
+    conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
+) -> sp.csr_array:
     """Create a sparse convolutional matrix for a 2D custom kernel.
 
     Args:
@@ -295,12 +299,11 @@ def custom_operator_2d(kernel: npt.NDArray[np.float32], image_size: int, conv_mo
             kernel_width = kernel_size // 2
 
     # Initialize the convolution matrix as a sparse matrix
-    conv_matrix = sp.lil_matrix((input_size ** 2, image_size ** 2))
+    conv_matrix = sp.lil_matrix((input_size**2, image_size**2))
 
     # Loop through each pixel in image
     for img_i in range(input_size):
         for img_j in range(input_size):
-
             # Define the row of this pixel in the output matrix
             row_idx = img_i * input_size + img_j
 
@@ -314,7 +317,9 @@ def custom_operator_2d(kernel: npt.NDArray[np.float32], image_size: int, conv_mo
                             offset_j = img_j + ker_j - kernel_width
                             col_idx = offset_i * image_size + offset_j
 
-                            if (0 <= offset_i < image_size) and (0 <= offset_j < image_size):                            
+                            if (0 <= offset_i < image_size) and (
+                                0 <= offset_j < image_size
+                            ):
                                 conv_matrix[row_idx, col_idx] = kernel[ker_i, ker_j]
 
                         case ConvolutionMode.SAME:
@@ -322,7 +327,9 @@ def custom_operator_2d(kernel: npt.NDArray[np.float32], image_size: int, conv_mo
                             offset_i = img_i + ker_i - kernel_width
                             offset_j = img_j + ker_j - kernel_width
 
-                            if (0 <= offset_i < image_size) and (0 <= offset_j < image_size):
+                            if (0 <= offset_i < image_size) and (
+                                0 <= offset_j < image_size
+                            ):
                                 col_idx = offset_i * image_size + offset_j
                                 conv_matrix[row_idx, col_idx] = kernel[ker_i, ker_j]
 
