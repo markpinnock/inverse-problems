@@ -268,45 +268,49 @@ def custom_operator_2d(
     if kernel.ndim != 2:
         raise ValueError("The kernel must be 2D.")
 
-    if kernel.shape[0] != kernel.shape[1]:
-        raise ValueError("Currently only square kernels supported.")
+    kernel_h, kernel_w = kernel.shape
 
-    kernel_size = kernel.shape[0]
-
-    # Determine convolution mode
+    # Determine input_h and input_w (image boundaries) and kernel radius
     match conv_mode:
         case ConvolutionMode.FULL:
-            input_size = image_size + kernel_size - 1
-            kernel_width = kernel_size - 1
+            input_h = image_size + kernel_h - 1
+            input_w = image_size + kernel_w - 1
+            radius_h = kernel_h - 1
+            radius_w = kernel_w - 1
 
         case ConvolutionMode.SAME:
-            input_size = image_size
-            kernel_width = kernel_size // 2
+            input_h = image_size
+            input_w = image_size
+            radius_h = kernel_h // 2
+            radius_w = kernel_w // 2
 
         case ConvolutionMode.VALID:
-            input_size = image_size - kernel_size + 1
+            input_h = image_size - kernel_h + 1
+            input_w = image_size - kernel_w + 1
 
         case ConvolutionMode.PERIODIC:
-            input_size = image_size
-            kernel_width = kernel_size // 2
+            input_h = image_size
+            input_w = image_size
+            radius_h = kernel_h // 2
+            radius_w = kernel_w // 2
 
     # Initialize the convolution matrix as a sparse matrix
-    conv_matrix = sp.lil_matrix((input_size**2, image_size**2))
+    conv_matrix = sp.lil_matrix((input_h * input_w, image_size**2))
 
     # Loop through each pixel in image
-    for img_i in range(input_size):
-        for img_j in range(input_size):
+    for img_i in range(input_h):
+        for img_j in range(input_w):
             # Define the row of this pixel in the output matrix
-            row_idx = img_i * input_size + img_j
+            row_idx = img_i * input_w + img_j
 
             # Loop through each element in the kernel
-            for ker_i in range(kernel_size):
-                for ker_j in range(kernel_size):
+            for ker_i in range(kernel_h):
+                for ker_j in range(kernel_w):
                     match conv_mode:
                         case ConvolutionMode.FULL:
                             # Shift column index back by full kernel width
-                            offset_i = img_i + ker_i - kernel_width
-                            offset_j = img_j + ker_j - kernel_width
+                            offset_i = img_i + ker_i - radius_h
+                            offset_j = img_j + ker_j - radius_w
                             col_idx = offset_i * image_size + offset_j
 
                             if (0 <= offset_i < image_size) and (
@@ -316,8 +320,8 @@ def custom_operator_2d(
 
                         case ConvolutionMode.SAME:
                             # Shift column index back by half kernel width
-                            offset_i = img_i + ker_i - kernel_width
-                            offset_j = img_j + ker_j - kernel_width
+                            offset_i = img_i + ker_i - radius_h
+                            offset_j = img_j + ker_j - radius_w
 
                             if (0 <= offset_i < image_size) and (
                                 0 <= offset_j < image_size
@@ -334,8 +338,8 @@ def custom_operator_2d(
 
                         case ConvolutionMode.PERIODIC:
                             # Compute periodic (wrapped) column index
-                            offset_i = (img_i + ker_i - kernel_width) % image_size
-                            offset_j = (img_j + ker_j - kernel_width) % image_size
+                            offset_i = (img_i + ker_i - radius_h) % image_size
+                            offset_j = (img_j + ker_j - radius_w) % image_size
                             col_idx = offset_i * image_size + offset_j
                             conv_matrix[row_idx, col_idx] = kernel[ker_i, ker_j]
 
