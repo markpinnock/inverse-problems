@@ -540,3 +540,203 @@ def full_5_first_order_2d(full_5_first_order_1d: npt.NDArray) -> npt.NDArray:
             np.hstack([zero, zero, zero, zero, block]),
         ],
     )
+
+
+@pytest.fixture
+def valid_4_second_order_2d(valid_4_second_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix.
+
+    Returns
+    -------
+        [ B  B  B  0 ]
+        [ 0  B  B  B ]
+
+    """
+    block = valid_4_second_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, block, block, zero]),
+            np.hstack([zero, block, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def valid_5_second_order_2d(valid_5_second_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix.
+
+    Returns
+    -------
+        [ B  B  B  0  0 ]
+        [ 0  B  B  B  0 ]
+        [ 0  0  B  B  B ]
+
+    """
+    block = valid_5_second_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, block, block, zero, zero]),
+            np.hstack([zero, block, block, block, zero]),
+            np.hstack([zero, zero, block, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def same_4_second_order_2d(same_4_second_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix.
+
+    Returns
+    -------
+        [ B  B  0  0 ]
+        [ B  B  B  0 ]
+        [ 0  B  B  B ]
+        [ 0  0  B  B ]
+
+    """
+    block = same_4_second_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, block, zero, zero]),
+            np.hstack([block, block, block, zero]),
+            np.hstack([zero, block, block, block]),
+            np.hstack([zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def same_5_second_order_2d(same_5_second_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix.
+
+    Returns
+    -------
+        [ B  B  0  0  0 ]
+        [ B  B  B  0  0 ]
+        [ 0  B  B  B  0 ]
+        [ 0  0  B  B  B ]
+        [ 0  0  0  B  B ]
+
+    """
+    block = same_5_second_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, block, zero, zero, zero]),
+            np.hstack([block, block, block, zero, zero]),
+            np.hstack([zero, block, block, block, zero]),
+            np.hstack([zero, zero, block, block, block]),
+            np.hstack([zero, zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def periodic_4_second_order_2d(periodic_4_second_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix.
+
+    Returns
+    -------
+        [ B  B  0  B ]
+        [ B  B  B  0 ]
+        [ 0  B  B  B ]
+        [ B  0  B  B ]
+
+    """
+    block = periodic_4_second_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, block, zero, block]),
+            np.hstack([block, block, block, zero]),
+            np.hstack([zero, block, block, block]),
+            np.hstack([block, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def periodic_5_second_order_2d(periodic_5_second_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix.
+
+    Returns
+    -------
+        [ B  B  0  0  B ]
+        [ B  B  B  0  0 ]
+        [ 0  B  B  B  0 ]
+        [ 0  0  B  B  B ]
+        [ B  0  0  B  B ]
+
+    """
+    block = periodic_5_second_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, block, zero, zero, block]),
+            np.hstack([block, block, block, zero, zero]),
+            np.hstack([zero, block, block, block, zero]),
+            np.hstack([zero, zero, block, block, block]),
+            np.hstack([block, zero, zero, block, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def full_4_second_order_2d(full_4_second_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix.
+
+    Returns
+    -------
+        [ B  0  0  0 ]
+        [ B  B  0  0 ]
+        [ B  B  B  0 ]
+        [ 0  B  B  B ]
+        [ 0  0  B  B ]
+        [ 0  0  0  B ]
+
+    """
+    block = full_4_second_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, zero, zero, zero]),
+            np.hstack([block, block, zero, zero]),
+            np.hstack([block, block, block, zero]),
+            np.hstack([zero, block, block, block]),
+            np.hstack([zero, zero, block, block]),
+            np.hstack([zero, zero, zero, block]),
+        ],
+    )
+
+
+@pytest.fixture
+def full_5_second_order_2d(full_5_second_order_1d: npt.NDArray) -> npt.NDArray:
+    """Return 2D convolution matrix.
+
+    Returns
+    -------
+        [ B  0  0  0  0 ]
+        [ B  B  0  0  0 ]
+        [ B  B  B  0  0 ]
+        [ 0  B  B  B  0 ]
+        [ 0  0  B  B  B ]
+        [ 0  0  0  B  B ]
+        [ 0  0  0  0  B ]
+
+    """
+    block = full_5_second_order_1d
+    zero = np.zeros_like(block)
+    return np.vstack(
+        [
+            np.hstack([block, zero, zero, zero, zero]),
+            np.hstack([block, block, zero, zero, zero]),
+            np.hstack([block, block, block, zero, zero]),
+            np.hstack([zero, block, block, block, zero]),
+            np.hstack([zero, zero, block, block, block]),
+            np.hstack([zero, zero, zero, block, block]),
+            np.hstack([zero, zero, zero, zero, block]),
+        ],
+    )
