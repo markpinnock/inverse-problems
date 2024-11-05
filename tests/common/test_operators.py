@@ -11,11 +11,14 @@ from common.operators import (
     ConvolutionMode,
     custom_operator_1d,
     custom_operator_2d,
+    derivative_operator,
     dx_operator,
     dx_operator_1d,
     dy_operator,
     identity_operator,
 )
+
+np.random.seed(5)
 
 
 def test_identity_operator() -> None:
@@ -203,3 +206,13 @@ def test_dy_operator(conv_mode: str) -> None:
             # assert np.equal(dy @ img.flatten(), ).all()
 
     assert np.equal((dy @ img.flatten()).reshape(expected.shape), expected).all()
+
+
+def test_derivative_operator() -> None:
+    """Test derivative operator."""
+    img = np.zeros((4, 4))
+    deriv = derivative_operator(img=img)
+
+    u = np.random.random(deriv.shape[1])
+    v = np.random.random(deriv.shape[0])
+    assert np.isclose(((deriv @ u).T @ v), u @ (deriv.T @ v))
