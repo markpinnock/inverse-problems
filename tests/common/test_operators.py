@@ -11,6 +11,7 @@ from common.operators import (
     ConvolutionMode,
     custom_operator_1d,
     custom_operator_2d,
+    dx_operator_1d,
     identity_operator,
 )
 
@@ -145,11 +146,7 @@ def test_custom_operator_2d_odd(
 def test_dx_operator_1d(conv_mode: str) -> None:
     """Test dx operator for 1D."""
     arr = np.array([1, 2, 4, 8])
-    dx = custom_operator_1d(
-        kernel=np.array([-1, 1]),
-        arr_size=len(arr),
-        conv_mode=conv_mode,
-    )
+    dx = dx_operator_1d(arr=arr, conv_mode=conv_mode)
 
     match conv_mode:
         case ConvolutionMode.VALID:
