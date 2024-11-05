@@ -11,7 +11,9 @@ from common.operators import (
     ConvolutionMode,
     custom_operator_1d,
     custom_operator_2d,
+    dx_operator,
     dx_operator_1d,
+    dy_operator,
     identity_operator,
 )
 
@@ -144,7 +146,7 @@ def test_custom_operator_2d_odd(
 
 @pytest.mark.parametrize(("conv_mode"), ["valid", "same", "periodic", "full"])
 def test_dx_operator_1d(conv_mode: str) -> None:
-    """Test dx operator for 1D."""
+    """Test dx operator for 1D arrays."""
     arr = np.array([1, 2, 4, 8])
     dx = dx_operator_1d(arr=arr, conv_mode=conv_mode)
 
@@ -157,3 +159,47 @@ def test_dx_operator_1d(conv_mode: str) -> None:
             assert np.equal(dx @ arr, np.diff(arr, prepend=8)).all()
         case ConvolutionMode.FULL:
             assert np.equal(dx @ arr, np.diff(arr, prepend=0, append=0)).all()
+
+
+@pytest.mark.parametrize(("conv_mode"), ["valid", "same", "periodic", "full"])
+def test_dx_operator(conv_mode: str) -> None:
+    """Test dx operator for 2D images."""
+    arr = np.array([[1, 2, 4, 8]])
+    img = np.repeat(arr, 4, axis=0)
+    dx = dx_operator(img=img, conv_mode=conv_mode)
+
+    match conv_mode:
+        case ConvolutionMode.VALID:
+            expected = np.diff(img, axis=1)
+        case ConvolutionMode.SAME:
+            expected = np.diff(img, axis=1, prepend=0)
+        case ConvolutionMode.PERIODIC:
+            expected = np.diff(img, axis=1, prepend=8)
+        case ConvolutionMode.FULL:
+            expected = np.diff(img, axis=1, prepend=0, append=0)
+
+    assert np.equal((dx @ img.flatten()).reshape(expected.shape), expected).all()
+
+
+@pytest.mark.parametrize(("conv_mode"), ["valid", "same", "periodic", "full"])
+def test_dy_operator(conv_mode: str) -> None:
+    """Test dy operator for 2D images."""
+    arr = np.array([[1, 2, 4, 8]])
+    img = np.repeat(arr, 4, axis=0).T
+    dy = dy_operator(img=img, conv_mode=conv_mode)
+
+    match conv_mode:
+        case ConvolutionMode.VALID:
+            expected = np.diff(img, axis=0)
+            # assert np.equal(dy @ img.flatten(), ).all()
+        case ConvolutionMode.SAME:
+            expected = np.diff(img, axis=0, prepend=0)
+            # assert np.equal(dy @ img.flatten(), ).all()
+        case ConvolutionMode.PERIODIC:
+            expected = np.diff(img, axis=0, prepend=8)
+            # assert np.equal(dy @ img.flatten(), ).all()
+        case ConvolutionMode.FULL:
+            expected = np.diff(img, axis=0, prepend=0, append=0)
+            # assert np.equal(dy @ img.flatten(), ).all()
+
+    assert np.equal((dy @ img.flatten()).reshape(expected.shape), expected).all()
