@@ -142,13 +142,7 @@ def derivative_operator(
     """
     Dx = dx_operator(img, conv_mode=conv_mode)
     Dy = dy_operator(img, conv_mode=conv_mode)
-    D = sp.vstack([Dx, Dy])
-
-    u = np.random.random(D.shape[1])
-    v = np.random.random(D.shape[0])
-    assert np.isclose(((D @ u).T @ v), u @ (D.T @ v))
-
-    return D
+    return sp.vstack([Dx, Dy])
 
 
 def laplacian_operator(
