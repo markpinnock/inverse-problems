@@ -56,10 +56,40 @@ def dx_operator_1d(
 
     """
     if arr.ndim > 1:
-        raise ValueError("The input array must be 1D.")
+        raise ValueError(f"The input array must be 1D: {arr.shape}")
 
     return custom_operator_1d(
-        kernel=np.array([-1, 1]), arr_size=arr.shape[0], conv_mode=conv_mode,
+        kernel=np.array([-1, 1]),
+        arr_size=arr.shape[0],
+        conv_mode=conv_mode,
+    )
+
+
+def dx_operator(
+    img: npt.NDArray[np.uint8 | np.float32],
+    conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
+) -> sp.csr_matrix:
+    """Create x-direction derivative operator for 2D images.
+
+    Args:
+        img: The input image.
+        conv_mode: The convolutional mode (full, same, valid, periodic).
+
+    Returns
+    -------
+        Sparse x-direction derivative operator
+
+    """
+    if img.ndim != 2:
+        raise ValueError(f"The input array must be 2D: {img.shape}")
+
+    if img.shape[0] != img.shape[1]:
+        raise ValueError(f"Currently only square images supported: {img.shape}")
+
+    return custom_operator_2d(
+        kernel=np.array([[-1, 1]]),
+        image_size=img.shape[0],
+        conv_mode=conv_mode,
     )
 
 
@@ -67,32 +97,28 @@ def dy_operator(
     img: npt.NDArray[np.uint8 | np.float32],
     conv_mode: str | ConvolutionMode = ConvolutionMode.SAME,
 ) -> sp.csr_matrix:
-    """Create derivative operator in the y-direction.
+    """Create y-direction derivative operator for 2D images.
 
     Args:
         img: The input image.
-        conv_mode: The convolutional mode. Either "valid" or "periodic".
+        conv_mode: The convolutional mode (full, same, valid, periodic).
 
     Returns
     -------
-        Sparse y-direction difference operator
+        Sparse y-direction derivative operator
 
     """
-    dims = img.shape
-    flat_dims = np.prod(dims)
-    vals = np.ones((2, flat_dims)) * np.array([[-1], [1]])
+    if img.ndim != 2:
+        raise ValueError(f"The input array must be 2D: {img.shape}")
 
-    if conv_mode == ConvolutionMode.VALID:
-        Dy = sp.spdiags(vals, [0, dims[1]], flat_dims - dims[1], flat_dims)
+    if img.shape[0] != img.shape[1]:
+        raise ValueError(f"Currently only square kernels supported: {img.shape}")
 
-    elif conv_mode == ConvolutionMode.PERIODIC:
-        Dy = sp.spdiags(vals, [0, dims[1]], flat_dims, flat_dims).tolil()
-        Dy[-dims[1] :, 0 : dims[1]] = sp.eye(dims[1])
-
-    else:
-        raise ValueError(f"Convolution mode `{conv_mode}` currently not supported")
-
-    return Dy.tocsr()
+    return custom_operator_2d(
+        kernel=np.array([[-1], [1]]),
+        image_size=img.shape[0],
+        conv_mode=conv_mode,
+    )
 
 
 def derivative_operator(
