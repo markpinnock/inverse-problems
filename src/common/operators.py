@@ -133,7 +133,7 @@ def derivative_operator(
 
     Args:
         img: The input image.
-        conv_mode: The convolutional mode. Either "valid" or "periodic".
+        conv_mode: The convolutional mode (full, same, valid, periodic).
 
     Returns
     -------
@@ -153,15 +153,17 @@ def laplacian_operator(
 
     Args:
         img: The input image.
-        conv_mode: The convolutional mode. Either "valid" or "periodic".
+        conv_mode: The convolutional mode: only `same` supported.
 
     Returns
     -------
         Sparse Laplacian operator
 
     """
-    D = derivative_operator(img, conv_mode=conv_mode)
+    if conv_mode != ConvolutionMode.SAME:
+        raise ValueError(f"Only `same` conv mode is supported: got {conv_mode}.")
 
+    D = derivative_operator(img, conv_mode=conv_mode)
     return -D.T @ D
 
 
