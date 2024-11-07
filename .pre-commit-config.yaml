@@ -74,8 +74,8 @@ repos:
     hooks:
     - id: pydocstyle
       args:
-      - --ignore=D10,D203,D205,D213
       - --convention=google
+      - --add-ignore=D10,D203,D205,D213
 
   - repo: https://github.com/PyCQA/docformatter
     rev: v1.5.1
