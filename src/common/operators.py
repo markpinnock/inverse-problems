@@ -26,7 +26,7 @@ class ConvolutionMode(str, enum.Enum):
     PERIODIC = "periodic"
 
 
-def identity_operator(img: npt.NDArray[np.uint8 | np.float32]) -> sp.dia_matrix:
+def identity_operator(img: npt.NDArray[np.uint8 | np.float32]) -> sp.csr_matrix:
     """Create identity operator.
 
     Args:
@@ -37,7 +37,7 @@ def identity_operator(img: npt.NDArray[np.uint8 | np.float32]) -> sp.dia_matrix:
         Sparse identity matrix
 
     """
-    return sp.eye(np.prod(img.shape))
+    return sp.eye(np.prod(img.shape)).tocsr()
 
 
 def dx_operator_1d(
