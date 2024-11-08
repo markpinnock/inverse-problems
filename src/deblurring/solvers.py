@@ -307,16 +307,8 @@ class LSQRSolver(Solver):
 
         A = sp.linalg.LinearOperator(
             shape=(self._flat_dims + L.shape[0], self._flat_dims),
-            matvec=lambda x: self.A_op(
-                x,
-                alpha=alpha,
-                L=L,
-            ),
-            rmatvec=lambda x: self.AT_op(
-                x,
-                alpha=alpha,
-                L=L,
-            ),
+            matvec=lambda x: self.A_op(x, alpha=alpha, L=L),
+            rmatvec=lambda x: self.AT_op(x, alpha=alpha, L=L),
         )
 
         lsqr_output = sp.linalg.lsqr(A=A, b=b_aug, x0=x0, **kwargs)
