@@ -6,7 +6,7 @@ import pytest
 import scipy.sparse as sp
 from scipy.signal import convolve2d
 
-from deblurring.solvers import GMRESSolver
+from deblurring.solvers import GMRESSolver, LSQRSolver
 
 
 @pytest.mark.parametrize(("alpha", "expected"), [(0.0, 1.0), (1.0, 0.0), (2.0, -1.0)])  # type: ignore[misc]
@@ -49,5 +49,19 @@ def test_GMRESSolver_ATb_op(kernel: npt.NDArray[np.float64]) -> None:
     assert np.equal(gmres.ATb_op(), -img.flatten()).all()
 
 
-def test_LSQRSolver_A_op() -> None:
+@pytest.mark.parametrize(("alpha"), [0.0, 2.0, 4.0])  # type: ignore[misc]
+def test_LSQRSolver_A_op(alpha: float, kernel: npt.NDArray[np.float64]) -> None:
     """Test the A operator for LSQRSolver."""
+    img = np.ones((4, 4))
+    flat_dims = np.prod(img.shape)
+    lsqr = LSQRSolver(b=np.zeros_like(img), kernel=kernel)
+
+    # Set up operator
+    L = -sp.eye(flat_dims)
+    A = partial(lsqr.A_op, alpha=alpha, L=L)
+    out = A(img.flatten())
+
+    # Test against expected value
+    exp_reg_term = np.sqrt(alpha) * -np.ones(flat_dims)
+    assert np.equal(out[0:flat_dims], -np.ones(flat_dims)).all()
+    assert np.equal(out[flat_dims:], exp_reg_term).all()
