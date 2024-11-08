@@ -1,10 +1,29 @@
 from functools import partial
 
 import numpy as np
+import pytest
 import scipy.sparse as sp
 from scipy.signal import convolve2d
 
 from deblurring.solvers import GMRESSolver
+
+
+@pytest.mark.parametrize(("alpha", "expected"), [(0.0, 1.0), (1.0, 0.0), (2.0, -1.0)])  # type: ignore[misc]
+def test_GMRESSolver_ATA_op(alpha: float, expected: float) -> None:
+    """Test the ATA operator for GMRESSolver."""
+    kernel = np.array([[0, 0, 0], [0, -1, 0], [0, 0, 0]])
+    img = np.ones((4, 4))
+    flat_dims = np.prod(img.shape)
+    gmres = GMRESSolver(b=np.zeros_like(img), kernel=kernel)
+
+    # Set up operator
+    L = sp.eye(flat_dims)
+    ATA = partial(gmres.ATA_op, alpha=alpha, LTL=-L.T @ L)
+    out = ATA(img.flatten())
+
+    # Test against expected value
+    exp_img = expected * np.ones(flat_dims)
+    assert np.equal(out, exp_img).all()
 
 
 def test_GMRESSolver_ATb_op() -> None:
