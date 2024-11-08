@@ -61,33 +61,33 @@ class Solver(ABC):
 
     def _prepare(
         self,
-        penalty_matrix: sp.csr_matrix | None = None,
+        L: sp.csr_matrix | None = None,
         x0: npt.NDArray | None = None,
     ) -> tuple[sp.csr_matrix, npt.NDArray]:
-        """Prepare the penalty matrix and initial guess.
+        """Prepare regularisation matrix and initial guess.
 
         Args:
-            penalty_matrix: Regularisation matrix
+            L: Regularisation matrix
             x0: Initial guess
 
         Returns
         -------
-            Tuple: Penalty matrix and initial guess
+            Tuple: Regularisation matrix and initial guess
 
         """
-        if penalty_matrix is None:
-            penalty_matrix = sp.eye(self._flat_dims)
+        if L is None:
+            L = sp.eye(self._flat_dims)
 
         if x0 is None:
             x0 = np.zeros(self._flat_dims)
 
-        return penalty_matrix, x0
+        return L, x0
 
     @abstractmethod
     def solve(
         self,
         alpha: float,
-        tik_func: sp.csr_matrix | None = None,
+        L: sp.csr_matrix | None = None,
         x0: npt.NDArray | None = None,
         **kwargs: dict[str, Any],
     ) -> npt.NDArray:
@@ -95,7 +95,7 @@ class Solver(ABC):
 
         Args:
             alpha: Regularisation parameter
-            tik_func: Regularisation matrix
+            L: Regularisation matrix
             x0: Initial guess
             **kwargs: Additional keyword arguments
 
@@ -109,20 +109,20 @@ class Solver(ABC):
     def calc_tikhonov_term(
         self,
         x: npt.NDArray,
-        penalty_matrix: sp.csr_matrix,
+        L: sp.csr_matrix,
     ) -> float:
         """Calculate the Tikhonov functional.
 
         Args:
             x: Solution
-            penalty_matrix: Regularisation matrix
+            L: Regularisation matrix
 
         Returns
         -------
             float: Tikhonov functional value
 
         """
-        return float(np.square(penalty_matrix @ x.reshape([-1, 1])).sum() / 2)
+        return float(np.square(L @ x.reshape([-1, 1])).sum() / 2)
 
 
 class GMRESSolver(Solver):
@@ -147,38 +147,37 @@ class GMRESSolver(Solver):
         self,
         x_flat: npt.NDArray,
         alpha: float,
-        penalty_matrix: sp.csr_matrix,
+        LTL: sp.csr_matrix,
     ) -> npt.NDArray:
-        """ATA operator for the normal equation.
-
-        Notes:
-            - Calculates (A^T A + alpha * L^T L) x
+        """ATA operator for the normal equations.
 
         Args:
             x_flat: Flattened current solution
             alpha: Regularisation parameter
-            penalty_matrix: Sparse regularisation matrix
-        """
-        x_flat = x_flat.reshape([-1, 1])
-        x = x_flat.reshape(self._dims)
-        x = self._kernel(self._kernel(x))
-        penalty_term = penalty_matrix @ x_flat
-        penalty_term *= alpha
+            LTL: Regularisation matrix tranposed and multipled with self
 
-        return x.reshape([-1, 1]) + penalty_term
+        Returns:
+            NDArray: vectorised result of (A^T A + ɑL^T L) x
+        """
+        x_flat = x_flat.reshape([-1, 1])  # Required to prevent OOM issues
+        x = x_flat.reshape(self._dims)
+        x = self._kernel(self._kernel(x))  # A^T A x
+        reg_term = (LTL @ x_flat) * alpha  # ɑL^T L x
+
+        return x.reshape([-1, 1]) + reg_term
 
     def ATb_op(self) -> npt.NDArray:
-        """ATb operator for the normal equation.
+        """ATb operator for the normal equations.
 
-        Notes:
-            - Calculates A^T b
+        Returns:
+            NDArray: vectorised result of A^T b
         """
         return self._kernel(self._b).reshape([-1, 1])
 
     def solve(
         self,
         alpha: float,
-        tik_func: sp.csr_matrix | None = None,
+        L: sp.csr_matrix | None = None,
         x0: npt.NDArray | None = None,
         **kwargs: dict[str, Any],
     ) -> npt.NDArray:
@@ -186,20 +185,20 @@ class GMRESSolver(Solver):
 
         Args:
             alpha: Regularisation parameter
-            tik_func: Regularisation matrix
+            L: Regularisation matrix
             x0: Initial guess
             **kwargs: Additional keyword arguments
 
         Returns
             npt.NDArray: Solution
         """
-        penalty_matrix, x0 = self._prepare(tik_func, x0)
-        penalty_matrix = penalty_matrix.T @ penalty_matrix
+        L, x0 = self._prepare(L, x0)
+        LTL = L.T @ L
 
         # Set up sparse operators
         ATA = sp.linalg.LinearOperator(
             shape=(self._flat_dims, self._flat_dims),
-            matvec=lambda x: self.ATA_op(x, alpha=alpha, penalty_matrix=penalty_matrix),
+            matvec=lambda x: self.ATA_op(x, alpha=alpha, LTL=LTL),
         )
         ATb = self.ATb_op()
 
@@ -237,56 +236,56 @@ class LSQRSolver(Solver):
         self,
         x_flat: npt.NDArray,
         alpha: float,
-        penalty_matrix: sp.csr_matrix,
+        L: sp.csr_matrix,
     ) -> npt.NDArray:
         """Augmented operator for least squares.
 
         Notes:
-            - Calculates [A ]
+            - Calculates [A ] x
                          [ɑL]
         Args:
             x_flat: Flattened current solution
             alpha: Regularisation parameter
-            penalty_matrix: Sparse regularisation matrix
+            L: Sparse regularisation matrix
+
+        Returns:
+            NDArray: result of above calculation
         """
-        x_flat = x_flat.reshape([-1, 1])
+        x_flat = x_flat.reshape([-1, 1])  # Required to prevent OOM issues
         x = x_flat.reshape(self._dims)
-        x = self._kernel(x).reshape([-1, 1])
+        x = self._kernel(x).reshape([-1, 1])  # A x
+        reg_term = (L @ x_flat) * np.sqrt(alpha)  # sqrt(ɑ)L x
 
-        penalty_term = penalty_matrix @ x_flat
-        penalty_term *= np.sqrt(alpha)
-
-        return np.vstack([x, penalty_term])
+        return np.vstack([x, reg_term])
 
     def AT_op(
         self,
-        x_flat: npt.NDArray,
+        b_flat: npt.NDArray,
         alpha: float,
-        penalty_matrix: sp.csr_matrix,
+        L: sp.csr_matrix,
     ) -> npt.NDArray:
         """Transposed augmented operator for least squares.
 
         Notes:
-            - Calculates [A^T ɑL^T]
-
+            - Calculates [A^T ɑL^T] [b]
+                                    [0]
         Args:
-            x_flat: Flattened current solution
+            b_flat: Flattened blurred image
             alpha: Regularisation parameter
-            penalty_matrix: Sparse regularisation matrix
+            L: Sparse regularisation matrix
         """
-        x_flat = x_flat.reshape([-1, 1])
-        x = x_flat[0 : self._flat_dims].reshape(self._dims)
-        x = self._kernel(x).reshape([-1, 1])
+        b_flat = b_flat.reshape([-1, 1])  # Required to prevent OOM issues
+        b = b_flat[0 : self._flat_dims].reshape(self._dims)
+        b_zeros = b_flat[self._flat_dims :]
+        b = self._kernel(b).reshape([-1, 1])  # A^T b
+        reg_term = L.T @ b_zeros * np.sqrt(alpha)  # sqrt(ɑ)L^T 0
 
-        penalty_term = penalty_matrix.T @ x_flat[self._flat_dims :]
-        penalty_term *= np.sqrt(alpha)
-
-        return x + penalty_term
+        return b + reg_term
 
     def solve(
         self,
         alpha: float,
-        tik_func: sp.csr_matrix | None = None,
+        L: sp.csr_matrix | None = None,
         x0: npt.NDArray | None = None,
         **kwargs: dict[str, Any],
     ) -> npt.NDArray:
@@ -294,29 +293,29 @@ class LSQRSolver(Solver):
 
         Args:
             alpha: Regularisation parameter
-            tik_func: Regularisation matrix
+            L: Regularisation matrix
             x0: Initial guess
             **kwargs: Additional keyword arguments
 
         Returns
             npt.NDArray: Solution
         """
-        penalty_matrix, x0 = self._prepare(tik_func, x0)
+        L, x0 = self._prepare(L, x0)
 
         b_flat = np.reshape(self._b, [-1, 1])
-        b_aug = np.vstack([b_flat, np.zeros([penalty_matrix.shape[0], 1])])
+        b_aug = np.vstack([b_flat, np.zeros([L.shape[0], 1])])
 
         A = sp.linalg.LinearOperator(
-            shape=(self._flat_dims + penalty_matrix.shape[0], self._flat_dims),
+            shape=(self._flat_dims + L.shape[0], self._flat_dims),
             matvec=lambda x: self.A_op(
                 x,
                 alpha=alpha,
-                penalty_matrix=penalty_matrix,
+                L=L,
             ),
             rmatvec=lambda x: self.AT_op(
                 x,
                 alpha=alpha,
-                penalty_matrix=penalty_matrix,
+                L=L,
             ),
         )
 
