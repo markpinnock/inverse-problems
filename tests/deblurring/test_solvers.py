@@ -65,3 +65,20 @@ def test_LSQRSolver_A_op(alpha: float, kernel: npt.NDArray[np.float64]) -> None:
     exp_reg_term = np.sqrt(alpha) * -np.ones(flat_dims)
     assert np.equal(out[0:flat_dims], -np.ones(flat_dims)).all()
     assert np.equal(out[flat_dims:], exp_reg_term).all()
+
+
+@pytest.mark.parametrize(("alpha"), [0.0, 2.0, 4.0])  # type: ignore[misc]
+def test_LSQRSolver_AT_op(alpha: float, kernel: npt.NDArray[np.float64]) -> None:
+    """Test the AT operator for LSQRSolver."""
+    img = np.ones((4, 4))
+    flat_dims = np.prod(img.shape)
+    lsqr = LSQRSolver(b=img, kernel=kernel)
+
+    # Set up operator
+    L = -sp.eye(flat_dims)
+    AT = partial(lsqr.AT_op, alpha=alpha, L=L)
+    img_aug = np.vstack([img.reshape([-1, 1]), np.zeros([flat_dims, 1])])
+    out = AT(img_aug)
+
+    # Test against expected value
+    assert np.equal(out, -np.ones(flat_dims)).all()
