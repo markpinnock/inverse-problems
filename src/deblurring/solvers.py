@@ -123,3 +123,206 @@ class Solver(ABC):
 
         """
         return float(np.square(penalty_matrix @ x.reshape([-1, 1])).sum() / 2)
+
+
+class GMRESSolver(Solver):
+    """GMRES iterative solver."""
+
+    def __init__(
+        self,
+        b: npt.NDArray,
+        kernel: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        | npt.NDArray
+        | sp.csr_matrix,
+    ):
+        """Initialise GMRES Solver class.
+
+        Args:
+            b: Blurred image
+            kernel: Blurring kernel (function, numpy array or sparse matrix)
+        """
+        super().__init__(b, kernel)
+
+    def ATA_op(
+        self,
+        x_flat: npt.NDArray,
+        alpha: float,
+        penalty_matrix: sp.csr_matrix,
+    ) -> npt.NDArray:
+        """ATA operator for the normal equation.
+
+        Notes:
+            - Calculates (A^T A + alpha * L^T L) x
+
+        Args:
+            x_flat: Flattened current solution
+            alpha: Regularisation parameter
+            penalty_matrix: Sparse regularisation matrix
+        """
+        x_flat = x_flat.reshape([-1, 1])
+        x = x_flat.reshape(self._dims)
+        x = self._kernel(self._kernel(x))
+        penalty_term = penalty_matrix @ x_flat
+        penalty_term *= alpha
+
+        return x.reshape([-1, 1]) + penalty_term
+
+    def ATb_op(self) -> npt.NDArray:
+        """ATb operator for the normal equation.
+
+        Notes:
+            - Calculates A^T b
+        """
+        return self._kernel(self._b).reshape([-1, 1])
+
+    def solve(
+        self,
+        alpha: float,
+        tik_func: sp.csr_matrix | None = None,
+        x0: npt.NDArray | None = None,
+        **kwargs: dict[str, Any],
+    ) -> npt.NDArray:
+        """Solve the inverse problem.
+
+        Args:
+            alpha: Regularisation parameter
+            tik_func: Regularisation matrix
+            x0: Initial guess
+            **kwargs: Additional keyword arguments
+
+        Returns
+            npt.NDArray: Solution
+        """
+        penalty_matrix, x0 = self._prepare(tik_func, x0)
+        penalty_matrix = penalty_matrix.T @ penalty_matrix
+
+        # Set up sparse operators
+        ATA = sp.linalg.LinearOperator(
+            shape=(self._flat_dims, self._flat_dims),
+            matvec=lambda x: self.ATA_op(x, alpha=alpha, penalty_matrix=penalty_matrix),
+        )
+        ATb = self.ATb_op()
+
+        # Run GMRES
+        x_hat, res = sp.linalg.gmres(A=ATA, b=ATb, x0=x0, **kwargs)
+
+        if res == 0:
+            print("Successfully converged")
+            return x_hat.reshape(self._dims)
+
+        else:
+            print("Did not converge")
+            return x_hat.reshape(self._dims)
+
+
+class LSQRSolver(Solver):
+    """LSQR iterative solver."""
+
+    def __init__(
+        self,
+        b: npt.NDArray,
+        kernel: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        | npt.NDArray
+        | sp.csr_matrix,
+    ):
+        """Initialise LSQR Solver class.
+
+        Args:
+            b: Blurred image
+            kernel: Blurring kernel (function, numpy array or sparse matrix)
+        """
+        super().__init__(b, kernel)
+
+    def A_op(
+        self,
+        x_flat: npt.NDArray,
+        alpha: float,
+        penalty_matrix: sp.csr_matrix,
+    ) -> npt.NDArray:
+        """Augmented operator for least squares.
+
+        Notes:
+            - Calculates [A ]
+                         [ɑL]
+        Args:
+            x_flat: Flattened current solution
+            alpha: Regularisation parameter
+            penalty_matrix: Sparse regularisation matrix
+        """
+        x_flat = x_flat.reshape([-1, 1])
+        x = x_flat.reshape(self._dims)
+        x = self._kernel(x).reshape([-1, 1])
+
+        penalty_term = penalty_matrix @ x_flat
+        penalty_term *= np.sqrt(alpha)
+
+        return np.vstack([x, penalty_term])
+
+    def AT_op(
+        self,
+        x_flat: npt.NDArray,
+        alpha: float,
+        penalty_matrix: sp.csr_matrix,
+    ) -> npt.NDArray:
+        """Transposed augmented operator for least squares.
+
+        Notes:
+            - Calculates [A^T ɑL^T]
+
+        Args:
+            x_flat: Flattened current solution
+            alpha: Regularisation parameter
+            penalty_matrix: Sparse regularisation matrix
+        """
+        x_flat = x_flat.reshape([-1, 1])
+        x = x_flat[0 : self._flat_dims].reshape(self._dims)
+        x = self._kernel(x).reshape([-1, 1])
+
+        penalty_term = penalty_matrix.T @ x_flat[self._flat_dims :]
+        penalty_term *= np.sqrt(alpha)
+
+        return x + penalty_term
+
+    def solve(
+        self,
+        alpha: float,
+        tik_func: sp.csr_matrix | None = None,
+        x0: npt.NDArray | None = None,
+        **kwargs: dict[str, Any],
+    ) -> npt.NDArray:
+        """Solve the inverse problem.
+
+        Args:
+            alpha: Regularisation parameter
+            tik_func: Regularisation matrix
+            x0: Initial guess
+            **kwargs: Additional keyword arguments
+
+        Returns
+            npt.NDArray: Solution
+        """
+        penalty_matrix, x0 = self._prepare(tik_func, x0)
+
+        b_flat = np.reshape(self._b, [-1, 1])
+        b_aug = np.vstack([b_flat, np.zeros([penalty_matrix.shape[0], 1])])
+
+        A = sp.linalg.LinearOperator(
+            shape=(self._flat_dims + penalty_matrix.shape[0], self._flat_dims),
+            matvec=lambda x: self.A_op(
+                x,
+                alpha=alpha,
+                penalty_matrix=penalty_matrix,
+            ),
+            rmatvec=lambda x: self.AT_op(
+                x,
+                alpha=alpha,
+                penalty_matrix=penalty_matrix,
+            ),
+        )
+
+        lsqr_output = sp.linalg.lsqr(A=A, b=b_aug, x0=x0, **kwargs)
+        f_hat = lsqr_output[0]
+        it = lsqr_output[2]
+
+        print(f"Converged in {it} iterations")
+        return f_hat.reshape(self._dims)
