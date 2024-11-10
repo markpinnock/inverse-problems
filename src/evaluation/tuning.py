@@ -98,7 +98,11 @@ class Tuner(ABC):
         ratio = abs(y2 / y1)
         self._optimal_alpha = (x2 + ratio * x1) / (ratio + 1)
 
-    def calculate_metrics(self, alpha: float, f_hat: npt.NDArray[np.float64]) -> None:
+    def calculate_metrics(
+        self,
+        alpha: float | str,
+        f_hat: npt.NDArray[np.float64],
+    ) -> None:
         """Calculate metrics for a given regularisation hyper-parameter.
 
         Args:
@@ -208,3 +212,41 @@ class Tuner(ABC):
 
     def __str__(self) -> str:
         return str(self._metrics)
+
+
+class StandardTuner(Tuner):
+    def parameter_sweep(
+        self,
+        alphas: list[float],
+        L: sp.csr_matrix | Callable[[npt.NDArray, str], sp.csr_matrix],
+        save_imgs: bool = False,
+    ) -> None:
+        """Perform a parameter sweep over a range of regularisation hyper-parameters.
+
+        Args:
+            alphas: List of regularisation hyper-parameters
+            L: Sparse regularisation matrix or function returning it
+            save_imgs: Cache deblurred images for each hyper-parameter
+        """
+        self.reset_metrics()
+        self._L = L
+        self._alphas = []
+        self._f_hats = {}
+
+        for alpha in alphas:
+            # Solve for this alpha
+            self._alphas.append(alpha)
+            f_hat = self._solver.solve(alpha=alpha, L=L)
+
+            # Calculate metrics
+            self.calculate_metrics(alpha=alpha, f_hat=f_hat)
+            if save_imgs:
+                self._f_hats[alpha] = f_hat
+
+            print(
+                f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}, MSE {self._metrics.loc[alpha, "MSE"]}",
+            )
+
+        self.get_optimal_alpha()
+        self._optimal_f_hat = self._solver.solve(alpha=self._optimal_alpha, L=self._L)
+        self.calculate_metrics(alpha="optimal", f_hat=self._optimal_f_hat)
