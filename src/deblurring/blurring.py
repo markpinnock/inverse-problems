@@ -18,6 +18,24 @@ class GaussianType(str, enum.Enum):
     KERNEL = "kernel"
 
 
+def gaussian(x: npt.NDArray, mu: float, sigma: float) -> npt.NDArray:
+    """Create a 1D Gaussian distribution from specific x.
+
+    Args:
+    ----
+        x: x values
+        mu: Mean
+        sigma: Standard deviation
+
+    Returns:
+    -------
+        np.ndarray: 1D Gaussian distribution
+
+    """
+    exp_term = np.exp(-np.square(x - mu) / (2 * np.square(sigma)))
+    return exp_term / exp_term.sum()
+
+
 def gaussian_kernel_1d(
     sigma: float,
     size: int,
