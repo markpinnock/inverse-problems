@@ -1,8 +1,12 @@
 import enum
+from collections.abc import Callable
 
 import numpy as np
 import numpy.typing as npt
+import scipy.sparse as sp
 from scipy.stats import norm
+
+from common.utils import kernel_to_func
 
 
 @enum.unique
@@ -100,3 +104,27 @@ def gaussian_kernel_2d(
     xy_norm = np.sqrt(np.square(X) + np.square(Y))
     y = normal_distribution.pdf(xy_norm)
     return y / np.sum(y)
+
+
+def blur_and_noise(
+    arr: npt.NDArray,
+    kernel: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+    | npt.NDArray
+    | sp.csr_matrix,
+    theta: float,
+) -> npt.NDArray[np.float64]:
+    """Perform blurring using custom kernel and add noise.
+
+    Args:
+        - arr: input array (NDArray)
+        - kernel: can be function, NDArray or sparse matrix
+
+    Returns
+    -------
+        Blurred and noisy array
+    """
+    # Generate random noise
+    eta = np.random.randn(*arr.shape)
+
+    # Convolve with kernel and add noise
+    return kernel_to_func(kernel)(arr) + theta * eta
