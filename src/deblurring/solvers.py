@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from functools import partial
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sp
-from scipy.signal import convolve2d
 
-from common.operators import ConvolutionMode
+from common.utils import kernel_to_func
 
 
 class Solver(ABC):
@@ -34,30 +32,7 @@ class Solver(ABC):
         self._b = b
         self._dims = b.shape
         self._flat_dims = np.prod(self._dims)
-        self._kernel = self._set_kernel(kernel)
-
-    def _set_kernel(
-        self,
-        kernel: Callable[[Any], npt.NDArray] | npt.NDArray | sp.csr_matrix,
-    ) -> Callable[[npt.NDArray], npt.NDArray]:
-        """Convert the kernel to a callable function.
-
-        Args:
-        ----
-            kernel: Blurring kernel in function, numpy array or sparse matrix form
-
-        Returns
-        -------
-            Callable: Kernel as a callable function
-
-        """
-        if isinstance(kernel, np.ndarray):
-            return partial(convolve2d, in2=kernel, mode=ConvolutionMode.SAME)
-
-        if isinstance(kernel, sp.csr_matrix):
-            return lambda x: kernel @ x.flatten()
-
-        return kernel
+        self._kernel = kernel_to_func(kernel)
 
     def _prepare(
         self,
