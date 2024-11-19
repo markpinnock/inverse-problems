@@ -20,6 +20,9 @@ from evaluation.eval_metrics import calc_dicrepancy_principle, calc_miller_crite
 
 logger = get_logger(__name__)
 
+MAX_ITER = 100
+TOL = 1e-6
+
 
 class Tuner(ABC):
     """Abstract class for tuning regularisation hyper-parameters.
@@ -119,8 +122,8 @@ class Tuner(ABC):
             alpha: Regularisation hyper-parameter
             f_hat: Deblurred image
         """
-        residual = self._g.reshape([-1, 1]) - self._kernel(f_hat).reshape([-1, 1])
-        self._metrics.loc[alpha, "residual_norm"] = (residual.T @ residual).squeeze()
+        residual = self._g - self._kernel(f_hat)
+        self._metrics.loc[alpha, "residual_norm"] = np.square(residual).sum()
         self._metrics.loc[alpha, "tikhonov"] = self._solver.calc_tikhonov_term(
             x=f_hat,
             L=self._L,
@@ -253,7 +256,7 @@ class StandardTuner(Tuner):
 
         for alpha in alphas:
             # Solve for this alpha
-            self._alphas.append(alpha)  # ADD X0!
+            self._alphas.append(alpha)
             f_hat = self._solver.solve(alpha=alpha, L=L, verbose=False)
 
             # Calculate metrics
@@ -302,6 +305,10 @@ class IterativeTuner(Tuner):
             Tuple: Deblurred image and number of iterations
         """
         for it in range(max_iter):
+            # Get previous residual norm
+            prev_residual = self._g - self._kernel(prev_f_hat)
+            prev_residual_norm = np.square(prev_residual).sum()
+
             # Re-initialise regularisation matrix with the last predicted image
             self._L = L(prev_f_hat, conv_mode=ConvolutionMode.PERIODIC)  # type: ignore[call-arg]
             f_hat = self._solver.solve(
@@ -313,10 +320,9 @@ class IterativeTuner(Tuner):
             prev_f_hat = f_hat
 
             # Check for convergence
-            residual = self._g.reshape([-1, 1]) - self._kernel(f_hat).reshape([-1, 1])
-            residual_norm = (residual.T @ residual).squeeze()
-
-            if residual_norm <= tol * np.square(self._g).sum():
+            residual = self._g - self._kernel(f_hat)
+            residual_norm = np.square(residual).sum()
+            if np.abs(residual_norm - prev_residual_norm) / prev_residual_norm < tol:
                 break
 
         return f_hat, it
@@ -341,8 +347,8 @@ class IterativeTuner(Tuner):
             raise ValueError(
                 f"L must be a function returning a sparse matrix, got: {type(L)}",
             )
-        max_iter: int = kwargs.get("max_iter", 20)
-        tol: float = kwargs.get("tol", 1e-8)
+        max_iter: int = kwargs.get("max_iter", MAX_ITER)
+        tol: float = kwargs.get("tol", TOL)
 
         self.reset_metrics()
         self._alphas = []
@@ -364,9 +370,14 @@ class IterativeTuner(Tuner):
             if save_imgs:
                 self._f_hats[alpha] = f_hat
 
-            logger.info(
-                f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}, iterations {it + 1}",
-            )
+            if it + 1 == max_iter:
+                logger.warning(
+                    f"Alpha {alpha}: Maximum iterations reached, DP {self._metrics.loc[alpha, 'discrepancy']}",
+                )
+            else:
+                logger.info(
+                    f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}, iterations {it + 1}",
+                )
 
         # Get optimal alpha and iteratively solve
         self.get_optimal_alpha()
