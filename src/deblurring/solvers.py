@@ -301,5 +301,11 @@ class LSQRSolver(Solver):
 
         lsqr_output = sp.linalg.lsqr(A=A, b=b_aug, x0=x0, show=verbose, **kwargs)
         f_hat = lsqr_output[0]
+        it = lsqr_output[2]
+
+        if verbose and it <= MAX_ITER:
+            logger.info(f"Converged in {it} iterations")
+        elif it > MAX_ITER:
+            logger.warning("Did not converge")
 
         return f_hat.reshape(self._dims)
