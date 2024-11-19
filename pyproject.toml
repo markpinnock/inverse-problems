@@ -22,9 +22,6 @@ typing = [
     "pytest==8.3.2",
 ]
 quality = [
-    "black==24.8.0",
-    "flake8==7.1.1",
-    "isort==5.13.2",
     "pre-commit==3.8.0",
 ]
 test = [
