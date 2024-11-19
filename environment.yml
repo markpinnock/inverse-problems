@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.12.5
   - pip=24.2
+  - astra-toolbox=2.2.0
   - black=24.8.0
   - flake8=7.1.1
   - isort=5.13.2
