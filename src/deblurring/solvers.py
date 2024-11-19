@@ -1,4 +1,3 @@
-import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
@@ -7,9 +6,10 @@ import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sp
 
+from common.log import get_logger
 from common.utils import kernel_to_func
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 MAX_ITER = 100
 
