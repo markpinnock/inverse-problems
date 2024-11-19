@@ -13,13 +13,20 @@ from skimage.metrics import (
     structural_similarity,
 )
 
+from common.log import get_logger
 from common.operators import ConvolutionMode
 from deblurring.solvers import Solver
 from evaluation.eval_metrics import calc_dicrepancy_principle, calc_miller_criterion
 
+logger = get_logger(__name__)
+
 
 class Tuner(ABC):
-    """Abstract class for tuning regularisation hyper-parameters."""
+    """Abstract class for tuning regularisation hyper-parameters.
+
+    Notes:
+        This determines the optimal alpha using the discrepancy principle.
+    """
 
     _L: sp.csr_matrix
     _alphas: list[float]
@@ -246,21 +253,28 @@ class StandardTuner(Tuner):
 
         for alpha in alphas:
             # Solve for this alpha
-            self._alphas.append(alpha)
-            f_hat = self._solver.solve(alpha=alpha, L=L)
+            self._alphas.append(alpha)  # ADD X0!
+            f_hat = self._solver.solve(alpha=alpha, L=L, verbose=False)
 
             # Calculate metrics
             self.calculate_metrics(alpha=alpha, f_hat=f_hat)
             if save_imgs:
                 self._f_hats[alpha] = f_hat
 
-            print(
-                f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}, MSE {self._metrics.loc[alpha, "MSE"]}",
+            logger.info(
+                f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}",
             )
 
         self.get_optimal_alpha()
-        self._optimal_f_hat = self._solver.solve(alpha=self._optimal_alpha, L=self._L)
+        self._optimal_f_hat = self._solver.solve(
+            alpha=self._optimal_alpha,
+            L=self._L,
+            verbose=False,
+        )
         self.calculate_metrics(alpha="optimal", f_hat=self._optimal_f_hat)
+        logger.info(
+            f"Optimal alpha {alpha}: DP {self.optimal_metrics["discrepancy"]}",
+        )
 
 
 class IterativeTuner(Tuner):
@@ -290,7 +304,12 @@ class IterativeTuner(Tuner):
         for it in range(max_iter):
             # Re-initialise regularisation matrix with the last predicted image
             self._L = L(prev_f_hat, conv_mode=ConvolutionMode.PERIODIC)  # type: ignore[call-arg]
-            f_hat = self._solver.solve(alpha=alpha, L=self._L, x0=prev_f_hat.flatten())
+            f_hat = self._solver.solve(
+                alpha=alpha,
+                L=self._L,
+                x0=prev_f_hat.flatten(),
+                verbose=False,
+            )
             prev_f_hat = f_hat
 
             # Check for convergence
@@ -345,8 +364,8 @@ class IterativeTuner(Tuner):
             if save_imgs:
                 self._f_hats[alpha] = f_hat
 
-            print(
-                f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}, MSE {self._metrics.loc[alpha, "MSE"]}, Iterations {it + 1}",
+            logger.info(
+                f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}, iterations {it + 1}",
             )
 
         # Get optimal alpha and iteratively solve
@@ -361,3 +380,6 @@ class IterativeTuner(Tuner):
 
         # Calculate metrics
         self.calculate_metrics(alpha="optimal", f_hat=self._optimal_f_hat)
+        logger.info(
+            f"Optimal alpha {alpha}: DP {self.optimal_metrics["discrepancy"]}",
+        )
