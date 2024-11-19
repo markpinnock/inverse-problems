@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
@@ -7,6 +8,10 @@ import numpy.typing as npt
 import scipy.sparse as sp
 
 from common.utils import kernel_to_func
+
+logger = logging.getLogger(__name__)
+
+MAX_ITER = 100
 
 
 class Solver(ABC):
@@ -64,6 +69,7 @@ class Solver(ABC):
         alpha: float,
         L: sp.csr_matrix | None = None,
         x0: npt.NDArray | None = None,
+        verbose: bool = True,
         **kwargs: dict[str, Any],
     ) -> npt.NDArray:
         """Solve the inverse problem.
@@ -72,6 +78,7 @@ class Solver(ABC):
             alpha: Regularisation parameter
             L: Regularisation matrix
             x0: Initial guess
+            verbose: Print status
             **kwargs: Additional keyword arguments
 
         Returns
@@ -154,6 +161,7 @@ class GMRESSolver(Solver):
         alpha: float,
         L: sp.csr_matrix | None = None,
         x0: npt.NDArray | None = None,
+        verbose: bool = True,
         **kwargs: dict[str, Any],
     ) -> npt.NDArray:
         """Solve the inverse problem.
@@ -162,6 +170,7 @@ class GMRESSolver(Solver):
             alpha: Regularisation parameter
             L: Regularisation matrix
             x0: Initial guess
+            verbose: Print status
             **kwargs: Additional keyword arguments
 
         Returns
@@ -180,13 +189,12 @@ class GMRESSolver(Solver):
         # Run GMRES
         x_hat, res = sp.linalg.gmres(A=ATA, b=ATb, x0=x0, **kwargs)
 
-        if res == 0:
+        if res == 0 and verbose:
             print("Successfully converged")
-            return x_hat.reshape(self._dims)
-
-        else:
+        elif res != 0:
             print("Did not converge")
-            return x_hat.reshape(self._dims)
+
+        return x_hat.reshape(self._dims)
 
 
 class LSQRSolver(Solver):
@@ -262,6 +270,7 @@ class LSQRSolver(Solver):
         alpha: float,
         L: sp.csr_matrix | None = None,
         x0: npt.NDArray | None = None,
+        verbose: bool = True,
         **kwargs: dict[str, Any],
     ) -> npt.NDArray:
         """Solve the inverse problem.
@@ -270,11 +279,15 @@ class LSQRSolver(Solver):
             alpha: Regularisation parameter
             L: Regularisation matrix
             x0: Initial guess
-            **kwargs: Additional keyword arguments
+            verbose: Print status
+            **kwargs: Additional keyword arguments for LSQR (e.g. iterlim)
 
         Returns
             npt.NDArray: Solution
         """
+        if "iter_lim" not in kwargs:
+            kwargs["iter_lim"] = MAX_ITER  # type: ignore[assignment]
+
         L, x0 = self._prepare(L, x0)
 
         b_flat = np.reshape(self._b, [-1, 1])
@@ -286,9 +299,7 @@ class LSQRSolver(Solver):
             rmatvec=lambda x: self.AT_op(x, alpha=alpha, L=L),
         )
 
-        lsqr_output = sp.linalg.lsqr(A=A, b=b_aug, x0=x0, **kwargs)
+        lsqr_output = sp.linalg.lsqr(A=A, b=b_aug, x0=x0, show=verbose, **kwargs)
         f_hat = lsqr_output[0]
-        it = lsqr_output[2]
 
-        print(f"Converged in {it} iterations")
         return f_hat.reshape(self._dims)
