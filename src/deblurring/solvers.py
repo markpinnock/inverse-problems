@@ -190,9 +190,9 @@ class GMRESSolver(Solver):
         x_hat, res = sp.linalg.gmres(A=ATA, b=ATb, x0=x0, **kwargs)
 
         if res == 0 and verbose:
-            print("Successfully converged")
+            logger.info("Successfully converged")
         elif res != 0:
-            print("Did not converge")
+            logger.warning("Did not converge")
 
         return x_hat.reshape(self._dims)
 
