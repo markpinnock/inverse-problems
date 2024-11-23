@@ -18,26 +18,33 @@ class Solver(ABC):
     """Abstract class for iterative solvers."""
 
     _b: npt.NDArray  # Blurred image
-    _kernel: Callable[[Any], npt.NDArray]  # Forward operator
+    _A: Callable[[Any], npt.NDArray]  # Forward operator
+    _AT: Callable[[Any], npt.NDArray]  # Adjoint operator
 
     def __init__(
         self,
         b: npt.NDArray,
-        kernel: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        A: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
         | npt.NDArray
         | sp.csr_matrix,
+        AT: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        | npt.NDArray
+        | sp.csr_matrix
+        | None = None,
     ):
         """Initialise Solver class.
 
         Args:
             b: Blurred image
-            kernel: Blurring kernel (function, numpy array or sparse matrix)
+            A: Forward operator (function, numpy array or sparse matrix)
+            AT: Adjoint operator (function, numpy array or sparse matrix)
 
         """
         self._b = b
         self._dims = b.shape
         self._flat_dims = np.prod(self._dims)
-        self._kernel = kernel_to_func(kernel)
+        self._A = kernel_to_func(A)
+        self._AT = kernel_to_func(AT) if AT is not None else self._A
 
     def _prepare(
         self,
@@ -113,17 +120,22 @@ class GMRESSolver(Solver):
     def __init__(
         self,
         b: npt.NDArray,
-        kernel: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        A: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
         | npt.NDArray
         | sp.csr_matrix,
+        AT: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        | npt.NDArray
+        | sp.csr_matrix
+        | None = None,
     ):
         """Initialise GMRES Solver class.
 
         Args:
             b: Blurred image
-            kernel: Blurring kernel (function, numpy array or sparse matrix)
+            A: Forward operator (function, numpy array or sparse matrix)
+            AT: Adjoint operator (function, numpy array or sparse matrix)
         """
-        super().__init__(b, kernel)
+        super().__init__(b, A, AT)
 
     def ATA_op(
         self,
@@ -143,7 +155,7 @@ class GMRESSolver(Solver):
         """
         x_flat = x_flat.reshape([-1, 1])  # Required to prevent OOM issues
         x = x_flat.reshape(self._dims)
-        x = self._kernel(self._kernel(x))  # A^T A x
+        x = self._A(self._A(x))  # A^T A x
         reg_term = (LTL @ x_flat) * alpha  # ɑL^T L x
 
         return x.reshape([-1, 1]) + reg_term
@@ -154,7 +166,7 @@ class GMRESSolver(Solver):
         Returns:
             NDArray: vectorised result of A^T b
         """
-        return self._kernel(self._b).reshape([-1, 1])
+        return self._AT(self._b).reshape([-1, 1])
 
     def solve(
         self,
@@ -203,17 +215,22 @@ class LSQRSolver(Solver):
     def __init__(
         self,
         b: npt.NDArray,
-        kernel: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        A: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
         | npt.NDArray
         | sp.csr_matrix,
+        AT: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
+        | npt.NDArray
+        | sp.csr_matrix
+        | None = None,
     ):
         """Initialise LSQR Solver class.
 
         Args:
             b: Blurred image
-            kernel: Blurring kernel (function, numpy array or sparse matrix)
+            A: Forward operator (function, numpy array or sparse matrix)
+            AT: Adjoint operator (function, numpy array or sparse matrix)
         """
-        super().__init__(b, kernel)
+        super().__init__(b, A, AT)
 
     def A_op(
         self,
@@ -236,7 +253,7 @@ class LSQRSolver(Solver):
         """
         x_flat = x_flat.reshape([-1, 1])  # Required to prevent OOM issues
         x = x_flat.reshape(self._dims)
-        x = self._kernel(x).reshape([-1, 1])  # A x
+        x = self._A(x).reshape([-1, 1])  # A x
         reg_term = (L @ x_flat) * np.sqrt(alpha)  # sqrt(ɑ)L x
 
         return np.vstack([x, reg_term])
@@ -260,7 +277,7 @@ class LSQRSolver(Solver):
         b_flat = b_flat.reshape([-1, 1])  # Required to prevent OOM issues
         b = b_flat[0 : self._flat_dims].reshape(self._dims)
         b_zeros = b_flat[self._flat_dims :]
-        b = self._kernel(b).reshape([-1, 1])  # A^T b
+        b = self._AT(b).reshape([-1, 1])  # A^T b
         reg_term = L.T @ b_zeros * np.sqrt(alpha)  # sqrt(ɑ)L^T 0
 
         return b + reg_term
