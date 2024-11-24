@@ -42,7 +42,7 @@ class Tuner(ABC):
         self,
         g: npt.NDArray,
         A: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
-        AT: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
+        AT: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix | None,
         solver: Solver,
         x_dims: list[int] | tuple[int, int] | None = None,
         noise_variance: float | None = None,
@@ -268,9 +268,15 @@ class StandardTuner(Tuner):
             if save_imgs:
                 self._f_hats[alpha] = f_hat
 
-            logger.info(
-                f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}",
-            )
+            # Display metrics
+            msg = f"Alpha {alpha}: "
+            if self._f is not None:
+                msg += f"MSE {self._metrics.loc[alpha, 'MSE']}, "
+            if self._noise_variance is not None:
+                msg += f"DP {self._metrics.loc[alpha, 'discrepancy']}"
+            if self._f is None and self._noise_variance is None:
+                msg += "No metrics available"
+            logger.info(msg)
 
         self.get_optimal_alpha()
         self._optimal_f_hat = self._solver.solve(
@@ -379,9 +385,15 @@ class IterativeTuner(Tuner):
                     f"Alpha {alpha}: Maximum iterations reached, DP {self._metrics.loc[alpha, 'discrepancy']}",
                 )
             else:
-                logger.info(
-                    f"Alpha {alpha}: DP {self._metrics.loc[alpha, "discrepancy"]}, iterations {it + 1}",
-                )
+                # Display metrics
+                msg = f"Alpha {alpha}: "
+                if self._f is not None:
+                    msg += f"MSE {self._metrics.loc[alpha, 'MSE']}, "
+                if self._noise_variance is not None:
+                    msg += f"DP {self._metrics.loc[alpha, 'discrepancy']}"
+                if self._f is None and self._noise_variance is None:
+                    msg += "No metrics available"
+                logger.info(msg)
 
         # Get optimal alpha and iteratively solve
         self.get_optimal_alpha()
