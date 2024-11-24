@@ -41,8 +41,10 @@ class Tuner(ABC):
     def __init__(
         self,
         g: npt.NDArray,
-        kernel: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
+        A: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
+        AT: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
         solver: Solver,
+        x_dims: list[int] | tuple[int, int] | None = None,
         noise_variance: float | None = None,
         f: npt.NDArray | None = None,
         miller: bool = False,
@@ -51,15 +53,17 @@ class Tuner(ABC):
 
         Args:
             g: Blurred image
-            kernel: Blurring kernel (function, numpy array or sparse matrix)
+            A: Forward operator (function, numpy array or sparse matrix)
+            AT: Adjoint operator (function, numpy array or sparse matrix)
             solver: Solver class for deblurring
+            x_dims: Dimensions of the solution
             noise_variance: Variance of noise in image if available
             f: Ground truth image if available
             miller: Use Miller criterion for tuning
         """
         self._g = g
-        self._kernel = kernel
-        self._solver = solver(g, kernel)
+        self._kernel = A
+        self._solver = solver(g, A, AT, x_dims)
         self._f = f
         self._noise_variance = noise_variance
         self._discrepancy_func = (
