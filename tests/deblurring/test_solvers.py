@@ -18,7 +18,7 @@ def test_GMRESSolver_ATA_op(
     """Test the ATA operator for GMRESSolver."""
     img = np.ones((4, 4))
     flat_dims = np.prod(img.shape)
-    gmres = GMRESSolver(b=np.zeros_like(img), kernel=kernel)
+    gmres = GMRESSolver(b=np.zeros_like(img), A=kernel)
 
     # Set up operator
     L = sp.eye(flat_dims)
@@ -35,17 +35,17 @@ def test_GMRESSolver_ATb_op(kernel: npt.NDArray[np.float64]) -> None:
     img = np.ones((4, 4))
 
     # Test numpy kernel
-    gmres = GMRESSolver(b=img, kernel=kernel)
+    gmres = GMRESSolver(b=img, A=kernel)
     assert np.equal(gmres.ATb_op(), -img.flatten()).all()
 
     # Test sparse kernel
     sparse_kernel = -sp.eye(16).tocsr()
-    gmres = GMRESSolver(b=img, kernel=sparse_kernel)
+    gmres = GMRESSolver(b=img, A=sparse_kernel)
     assert np.equal(gmres.ATb_op(), -img.flatten()).all()
 
     # Test functional kernel
     func_kernel = partial(convolve2d, in2=kernel, mode="same")
-    gmres = GMRESSolver(b=img, kernel=func_kernel)
+    gmres = GMRESSolver(b=img, A=func_kernel)
     assert np.equal(gmres.ATb_op(), -img.flatten()).all()
 
 
@@ -54,7 +54,7 @@ def test_LSQRSolver_A_op(alpha: float, kernel: npt.NDArray[np.float64]) -> None:
     """Test the A operator for LSQRSolver."""
     img = np.ones((4, 4))
     flat_dims = np.prod(img.shape)
-    lsqr = LSQRSolver(b=np.zeros_like(img), kernel=kernel)
+    lsqr = LSQRSolver(b=np.zeros_like(img), A=kernel)
 
     # Set up operator
     L = -sp.eye(flat_dims)
@@ -72,7 +72,7 @@ def test_LSQRSolver_AT_op(alpha: float, kernel: npt.NDArray[np.float64]) -> None
     """Test the AT operator for LSQRSolver."""
     img = np.ones((4, 4))
     flat_dims = np.prod(img.shape)
-    lsqr = LSQRSolver(b=img, kernel=kernel)
+    lsqr = LSQRSolver(b=img, A=kernel)
 
     # Set up operator
     L = -sp.eye(flat_dims)
