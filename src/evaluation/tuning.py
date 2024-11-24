@@ -280,7 +280,7 @@ class StandardTuner(Tuner):
         )
         self.calculate_metrics(alpha="optimal", f_hat=self._optimal_f_hat)
         logger.info(
-            f"Optimal alpha {alpha}: DP {self.optimal_metrics["discrepancy"]}",
+            f"Optimal alpha {self._optimal_alpha}: DP {self.optimal_metrics["discrepancy"]}",
         )
 
 
@@ -396,5 +396,5 @@ class IterativeTuner(Tuner):
         # Calculate metrics
         self.calculate_metrics(alpha="optimal", f_hat=self._optimal_f_hat)
         logger.info(
-            f"Optimal alpha {alpha}: DP {self.optimal_metrics["discrepancy"]}",
+            f"Optimal alpha {self._optimal_alpha}: DP {self.optimal_metrics["discrepancy"]}",
         )
