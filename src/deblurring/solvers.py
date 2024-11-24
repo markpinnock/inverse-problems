@@ -18,8 +18,12 @@ class Solver(ABC):
     """Abstract class for iterative solvers."""
 
     _b: npt.NDArray  # Blurred image
+    _b_dims: tuple[int, int]  # Dimensions of the blurred image
+    _flat_b_dims: int  # Dimensions of the flattened blurred image
     _A: Callable[[Any], npt.NDArray]  # Forward operator
     _AT: Callable[[Any], npt.NDArray]  # Adjoint operator
+    _x_dims: tuple[int, int]  # Dimensions of the solution
+    _flat_x_dims: int  # Dimensions of the flattened solution
 
     def __init__(
         self,
@@ -31,6 +35,7 @@ class Solver(ABC):
         | npt.NDArray
         | sp.csr_matrix
         | None = None,
+        x_dims: tuple[int, int] | None = None,
     ):
         """Initialise Solver class.
 
@@ -38,13 +43,19 @@ class Solver(ABC):
             b: Blurred image
             A: Forward operator (function, numpy array or sparse matrix)
             AT: Adjoint operator (function, numpy array or sparse matrix)
+            x_dims: Dimensions of the solution
 
         """
         self._b = b
-        self._dims = b.shape
-        self._flat_dims = np.prod(self._dims)
+        self._b_dims = b.shape
         self._A = kernel_to_func(A)
         self._AT = kernel_to_func(AT) if AT is not None else self._A
+        if x_dims is None:
+            self._x_dims = b.shape
+        else:
+            self._x_dims = x_dims
+        self._flat_b_dims = np.prod(self._b_dims)
+        self._flat_x_dims = np.prod(self._x_dims)
 
     def _prepare(
         self,
@@ -63,10 +74,10 @@ class Solver(ABC):
 
         """
         if L is None:
-            L = sp.eye(self._flat_dims)
+            L = sp.eye(self._flat_x_dims)
 
         if x0 is None:
-            x0 = np.zeros(self._flat_dims)
+            x0 = np.zeros(self._flat_x_dims)
 
         return L, x0
 
@@ -127,6 +138,7 @@ class GMRESSolver(Solver):
         | npt.NDArray
         | sp.csr_matrix
         | None = None,
+        x_dims: tuple[int, int] | None = None,
     ):
         """Initialise GMRES Solver class.
 
@@ -134,8 +146,9 @@ class GMRESSolver(Solver):
             b: Blurred image
             A: Forward operator (function, numpy array or sparse matrix)
             AT: Adjoint operator (function, numpy array or sparse matrix)
+            x_dims: Dimensions of the solution
         """
-        super().__init__(b, A, AT)
+        super().__init__(b, A, AT, x_dims)
 
     def ATA_op(
         self,
@@ -154,8 +167,8 @@ class GMRESSolver(Solver):
             NDArray: vectorised result of (A^T A + ɑL^T L) x
         """
         x_flat = x_flat.reshape([-1, 1])  # Required to prevent OOM issues
-        x = x_flat.reshape(self._dims)
-        x = self._A(self._A(x))  # A^T A x
+        x = x_flat.reshape(self._x_dims)
+        x = self._AT(self._A(x))  # A^T A x
         reg_term = (LTL @ x_flat) * alpha  # ɑL^T L x
 
         return x.reshape([-1, 1]) + reg_term
@@ -193,7 +206,7 @@ class GMRESSolver(Solver):
 
         # Set up sparse operators
         ATA = sp.linalg.LinearOperator(
-            shape=(self._flat_dims, self._flat_dims),
+            shape=(self._flat_x_dims, self._flat_x_dims),
             matvec=lambda x: self.ATA_op(x, alpha=alpha, LTL=LTL),
         )
         ATb = self.ATb_op()
@@ -206,7 +219,7 @@ class GMRESSolver(Solver):
         elif res != 0:
             logger.warning("Did not converge")
 
-        return x_hat.reshape(self._dims)
+        return x_hat.reshape(self._x_dims)
 
 
 class LSQRSolver(Solver):
@@ -222,6 +235,7 @@ class LSQRSolver(Solver):
         | npt.NDArray
         | sp.csr_matrix
         | None = None,
+        x_dims: tuple[int, int] | None = None,
     ):
         """Initialise LSQR Solver class.
 
@@ -229,8 +243,9 @@ class LSQRSolver(Solver):
             b: Blurred image
             A: Forward operator (function, numpy array or sparse matrix)
             AT: Adjoint operator (function, numpy array or sparse matrix)
+            x_dims: Dimensions of the solution
         """
-        super().__init__(b, A, AT)
+        super().__init__(b, A, AT, x_dims)
 
     def A_op(
         self,
@@ -252,7 +267,7 @@ class LSQRSolver(Solver):
             NDArray: result of above calculation
         """
         x_flat = x_flat.reshape([-1, 1])  # Required to prevent OOM issues
-        x = x_flat.reshape(self._dims)
+        x = x_flat.reshape(self._x_dims)
         x = self._A(x).reshape([-1, 1])  # A x
         reg_term = (L @ x_flat) * np.sqrt(alpha)  # sqrt(ɑ)L x
 
@@ -275,8 +290,8 @@ class LSQRSolver(Solver):
             L: Sparse regularisation matrix
         """
         b_flat = b_flat.reshape([-1, 1])  # Required to prevent OOM issues
-        b = b_flat[0 : self._flat_dims].reshape(self._dims)
-        b_zeros = b_flat[self._flat_dims :]
+        b = b_flat[0 : self._flat_b_dims].reshape(self._b_dims)
+        b_zeros = b_flat[self._flat_b_dims :]
         b = self._AT(b).reshape([-1, 1])  # A^T b
         reg_term = L.T @ b_zeros * np.sqrt(alpha)  # sqrt(ɑ)L^T 0
 
@@ -311,9 +326,9 @@ class LSQRSolver(Solver):
         b_aug = np.vstack([b_flat, np.zeros([L.shape[0], 1])])
 
         A = sp.linalg.LinearOperator(
-            shape=(self._flat_dims + L.shape[0], self._flat_dims),
+            shape=(self._flat_b_dims + L.shape[0], self._flat_x_dims),
             matvec=lambda x: self.A_op(x, alpha=alpha, L=L),
-            rmatvec=lambda x: self.AT_op(x, alpha=alpha, L=L),
+            rmatvec=lambda b: self.AT_op(b, alpha=alpha, L=L),
         )
 
         lsqr_output = sp.linalg.lsqr(A=A, b=b_aug, x0=x0, show=verbose, **kwargs)
@@ -325,4 +340,4 @@ class LSQRSolver(Solver):
         elif it > MAX_ITER:
             logger.warning("Did not converge")
 
-        return f_hat.reshape(self._dims)
+        return f_hat.reshape(self._x_dims)
