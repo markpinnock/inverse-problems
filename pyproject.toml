@@ -17,11 +17,8 @@ dependencies = {file = ["requirements.txt"]}
 where = ["src"]
 
 [project.optional-dependencies]
-typing = [
-    "mypy==1.11.2",
-    "pytest==8.3.2",
-]
 quality = [
+    "mypy==1.11.2",
     "pre-commit==3.8.0",
 ]
 test = [
