@@ -63,7 +63,7 @@ class Tuner(ABC):
         """
         self._g = g
         self._kernel = A
-        self._solver = solver(g, A, AT, x_dims)
+        self._solver = solver(g, A, AT, x_dims)  # type: ignore[operator]
         self._f = f
         self._noise_variance = noise_variance
         self._discrepancy_func = (
