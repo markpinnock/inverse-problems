@@ -740,3 +740,8 @@ def full_5_second_order_2d(full_5_second_order_1d: npt.NDArray) -> npt.NDArray:
             np.hstack([zero, zero, zero, zero, block]),
         ],
     )
+
+
+@pytest.fixture  # type: ignore[misc]
+def kernel() -> npt.NDArray[np.float64]:
+    return np.array([[0.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 0.0]])
