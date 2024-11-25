@@ -99,8 +99,8 @@ class Tuner(ABC):
         """
         raise NotImplementedError
 
-    def get_optimal_alpha(self) -> None:
-        """Find the optimal regularisation hyper-parameter."""
+    def get_optimal_discrepancy(self) -> None:
+        """Find the optimal regularisation hyper-parameter using the discrepancy principle."""
         discrepancy_vals = self._metrics.loc[:, "discrepancy"].values
         idx1 = np.argwhere((discrepancy_vals * np.roll(discrepancy_vals, -1)) < 0.0)[0][
             0
@@ -114,6 +114,23 @@ class Tuner(ABC):
         x2 = self._alphas[idx2]
         ratio = abs(y2 / y1)
         self._optimal_alpha = (x2 + ratio * x1) / (ratio + 1)
+
+    def get_optimal_with_metric(self, metric: str = "MSE") -> None:
+        """Find the optimal regularisation hyper-parameter using the discrepancy principle."""
+        if metric == "SSIM":
+            optimal_alpha_idx = self._metrics.loc[:, metric].values.argmax()
+        else:
+            optimal_alpha_idx = self._metrics.loc[:, metric].values.argmin()
+        self._optimal_alpha = self._alphas[optimal_alpha_idx]
+
+    def get_optimal_alpha(self) -> None:
+        """Find the optimal regularisation hyper-parameter."""
+        if self._noise_variance is not None:
+            self.get_optimal_discrepancy()
+        elif self._f is not None:
+            self.get_optimal_with_metric("SSIM")
+        else:
+            raise ValueError("No metric available to determine optimal alpha")
 
     def calculate_metrics(
         self,
@@ -271,7 +288,7 @@ class StandardTuner(Tuner):
             # Display metrics
             msg = f"Alpha {alpha}: "
             if self._f is not None:
-                msg += f"MSE {self._metrics.loc[alpha, 'MSE']}, "
+                msg += f"SSIM {self._metrics.loc[alpha, 'SSIM']}, "
             if self._noise_variance is not None:
                 msg += f"DP {self._metrics.loc[alpha, 'discrepancy']}"
             if self._f is None and self._noise_variance is None:
@@ -388,7 +405,7 @@ class IterativeTuner(Tuner):
                 # Display metrics
                 msg = f"Alpha {alpha}: "
                 if self._f is not None:
-                    msg += f"MSE {self._metrics.loc[alpha, 'MSE']}, "
+                    msg += f"SSIM {self._metrics.loc[alpha, 'SSIM']}, "
                 if self._noise_variance is not None:
                     msg += f"DP {self._metrics.loc[alpha, 'discrepancy']}"
                 if self._f is None and self._noise_variance is None:
