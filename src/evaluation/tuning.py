@@ -7,16 +7,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.sparse as sp
-from skimage.metrics import (
-    mean_squared_error,
-    peak_signal_noise_ratio,
-    structural_similarity,
-)
 
 from common.log import get_logger
 from common.operators import ConvolutionMode
 from deblurring.solvers import Solver
-from evaluation.eval_metrics import calc_dicrepancy_principle, calc_miller_criterion
+from evaluation.eval_metrics import Metrics
 
 logger = get_logger(__name__)
 
@@ -40,14 +35,18 @@ class Tuner(ABC):
 
     def __init__(
         self,
+        solver: Solver,
         g: npt.NDArray,
         A: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
-        AT: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix | None,
-        solver: Solver,
+        AT: Callable[[npt.NDArray], npt.NDArray]
+        | npt.NDArray
+        | sp.csr_matrix
+        | None = None,
         x_dims: list[int] | tuple[int, int] | None = None,
+        tuning_metric: str = "discrepancy",
+        use_miller: bool = False,
         noise_variance: float | None = None,
         f: npt.NDArray | None = None,
-        miller: bool = False,
     ) -> None:
         """Initialise Tuner class.
 
@@ -57,30 +56,16 @@ class Tuner(ABC):
             AT: Adjoint operator (function, numpy array or sparse matrix)
             solver: Solver class for deblurring
             x_dims: Dimensions of the solution
+            tuning_metric: Metric used for tuning
+            use_miller: Use Miller criterion for tuning
             noise_variance: Variance of noise in image if available
             f: Ground truth image if available
-            miller: Use Miller criterion for tuning
         """
         self._g = g
         self._kernel = A
-        self._solver = solver(g, A, AT, x_dims)  # type: ignore[operator]
+        self._solver = solver(g, A, AT, x_dims)
         self._f = f
-        self._noise_variance = noise_variance
-        self._discrepancy_func = (
-            calc_miller_criterion if miller else calc_dicrepancy_principle
-        )
-
-    def reset_metrics(self) -> None:
-        """Reset metrics dataframe."""
-        metric_columns = [
-            "MSE",
-            "pSNR",
-            "SSIM",
-            "residual_norm",
-            "discrepancy",
-            "tikhonov",
-        ]
-        self._metrics = pd.DataFrame(columns=metric_columns)
+        self._metrics = Metrics(tuning_metric, use_miller, noise_variance, f)
 
     @abstractmethod
     def parameter_sweep(
@@ -98,104 +83,6 @@ class Tuner(ABC):
             save_imgs: Cache deblurred images for each hyper-parameter
         """
         raise NotImplementedError
-
-    def get_optimal_discrepancy(self) -> None:
-        """Find the optimal regularisation hyper-parameter using the discrepancy principle."""
-        discrepancy_vals = self._metrics.loc[:, "discrepancy"].values
-        idx1 = np.argwhere((discrepancy_vals * np.roll(discrepancy_vals, -1)) < 0.0)[0][
-            0
-        ]
-        idx2 = np.argwhere((discrepancy_vals * np.roll(discrepancy_vals, 1)) < 0.0)[1][
-            0
-        ]
-        y1 = discrepancy_vals[idx1]
-        y2 = discrepancy_vals[idx2]
-        x1 = self._alphas[idx1]
-        x2 = self._alphas[idx2]
-        ratio = abs(y2 / y1)
-        self._optimal_alpha = (x2 + ratio * x1) / (ratio + 1)
-
-    def get_optimal_with_metric(self, metric: str = "MSE") -> None:
-        """Find the optimal regularisation hyper-parameter using the discrepancy principle."""
-        if metric == "SSIM":
-            optimal_alpha_idx = self._metrics.loc[:, metric].values.argmax()
-        else:
-            optimal_alpha_idx = self._metrics.loc[:, metric].values.argmin()
-        self._optimal_alpha = self._alphas[optimal_alpha_idx]
-
-    def get_optimal_alpha(self) -> None:
-        """Find the optimal regularisation hyper-parameter."""
-        if self._noise_variance is not None:
-            self.get_optimal_discrepancy()
-        elif self._f is not None:
-            self.get_optimal_with_metric("SSIM")
-        else:
-            raise ValueError("No metric available to determine optimal alpha")
-
-    def calculate_metrics(
-        self,
-        alpha: float | str,
-        f_hat: npt.NDArray[np.float64],
-    ) -> None:
-        """Calculate metrics for a given regularisation hyper-parameter.
-
-        Args:
-            alpha: Regularisation hyper-parameter
-            f_hat: Deblurred image
-        """
-        residual = self._g - self._kernel(f_hat)
-        self._metrics.loc[alpha, "residual_norm"] = np.square(residual).sum()
-        self._metrics.loc[alpha, "tikhonov"] = self._solver.calc_tikhonov_term(
-            x=f_hat,
-            L=self._L,
-        )
-
-        if self._noise_variance is not None:
-            self._metrics.loc[alpha, "discrepancy"] = self._discrepancy_func(
-                residual,
-                self._noise_variance,
-            )
-
-        if self._f is not None:
-            self._metrics.loc[alpha, "MSE"] = mean_squared_error(self._f, f_hat)
-            self._metrics.loc[alpha, "pSNR"] = peak_signal_noise_ratio(
-                self._f,
-                f_hat,
-                data_range=1.0,
-            )
-            self._metrics.loc[alpha, "SSIM"] = structural_similarity(
-                self._f,
-                f_hat,
-                data_range=1.0,
-            )
-
-    def display_metrics(self) -> None:
-        """Display metrics for each regularisation hyper-parameter."""
-        # Plot discrepancy values against alpha values
-        plt.subplot(2, 1, 1)
-        plt.semilogx(self._alphas, self._metrics.loc[:, "discrepancy"].iloc[:-1])
-        plt.axhline(0, ls="--", c="k")
-        plt.axvline(self._optimal_alpha, ls="--", c="k")
-        plt.xlabel("Alpha")
-        plt.ylabel("Discrepancy")
-        plt.title("Discrepancy principle")
-
-        # Plot L-curve (residual norm against Tikhonov term)
-        plt.subplot(2, 1, 2)
-        plt.loglog(
-            self._metrics.loc[:, "tikhonov"].iloc[:-1],
-            self._metrics.loc[:, "residual_norm"].iloc[:-1],
-        )
-        plt.plot(
-            self._metrics.loc["optimal", "tikhonov"],
-            self._metrics.loc["optimal", "residual_norm"],
-            "k+",
-        )
-        plt.xlabel("Tikhonov Term")
-        plt.ylabel("Residual norm")
-        plt.title("L-Curve")
-        plt.tight_layout()
-        plt.show()
 
     def display_sample(self) -> None:
         """Display input, reference and deblurred images for each hyper-parameter."""
@@ -225,27 +112,25 @@ class Tuner(ABC):
         plt.tight_layout()
         plt.show()
 
+    def display_metrics(self) -> None:
+        """Display metrics for each regularisation hyper-parameter."""
+        self._metrics.display_metrics()
+
     @property
-    def optimal_alpha(self) -> float:
-        return self._optimal_alpha
+    def optimal_alpha(self) -> Any:
+        return self._metrics.optimal_alpha
 
     @property
     def optimal_f_hat(self) -> npt.NDArray[np.float64]:
         return self._optimal_f_hat
 
     @property
-    def metrics(self) -> pd.DataFrame:
-        return self._metrics
+    def metrics_df(self) -> pd.DataFrame:
+        return self._metrics.metrics_df
 
     @property
     def optimal_metrics(self) -> pd.Series:
-        return self._metrics.loc["optimal"]
-
-    def __repr__(self) -> str:
-        return repr(self._metrics)
-
-    def __str__(self) -> str:
-        return str(self._metrics)
+        return self._metrics.optimal_metrics
 
 
 class StandardTuner(Tuner):
@@ -270,41 +155,43 @@ class StandardTuner(Tuner):
                 f"L must be of type `scipy.sparse.csr_matrix`, got: {type(L)}",
             )
 
-        self.reset_metrics()
+        self._metrics.reset_metrics()
         self._L = L
         self._alphas = []
         self._f_hats = {}
 
+        # Solve for each alpha
         for alpha in alphas:
-            # Solve for this alpha
             self._alphas.append(alpha)
             f_hat = self._solver.solve(alpha=alpha, L=L, verbose=False)
 
             # Calculate metrics
-            self.calculate_metrics(alpha=alpha, f_hat=f_hat)
+            residual = self._g - self._kernel(f_hat)
+            self._metrics.calculate_metrics(
+                alpha=alpha,
+                residual=residual,
+                f_hat=f_hat,
+                L=self._L,
+            )
             if save_imgs:
                 self._f_hats[alpha] = f_hat
+            self._metrics.log_metrics(alpha)
 
-            # Display metrics
-            msg = f"Alpha {alpha}: "
-            if self._f is not None:
-                msg += f"SSIM {self._metrics.loc[alpha, 'SSIM']}, "
-            if self._noise_variance is not None:
-                msg += f"DP {self._metrics.loc[alpha, 'discrepancy']}"
-            if self._f is None and self._noise_variance is None:
-                msg += "No metrics available"
-            logger.info(msg)
-
-        self.get_optimal_alpha()
+        # Calculate optimal alpha and solve
+        self._metrics.get_optimal_alpha()
         self._optimal_f_hat = self._solver.solve(
-            alpha=self._optimal_alpha,
+            alpha=self._metrics.optimal_alpha,
             L=self._L,
             verbose=False,
         )
-        self.calculate_metrics(alpha="optimal", f_hat=self._optimal_f_hat)
-        logger.info(
-            f"Optimal alpha {self._optimal_alpha}: DP {self.optimal_metrics["discrepancy"]}",
+        residual = self._g - self._kernel(self._optimal_f_hat)
+        self._metrics.calculate_metrics(
+            alpha="optimal",
+            residual=residual,
+            f_hat=self._optimal_f_hat,
+            L=self._L,
         )
+        self._metrics.log_metrics("optimal")
 
 
 class IterativeTuner(Tuner):
