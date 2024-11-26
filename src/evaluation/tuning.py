@@ -84,8 +84,17 @@ class Tuner(ABC):
         """
         raise NotImplementedError
 
-    def display_sample(self) -> None:
-        """Display input, reference and deblurred images for each hyper-parameter."""
+    def display_sample(
+        self,
+        y_slice: slice = slice(None, None),
+        x_slice: slice = slice(None, None),
+    ) -> None:
+        """Display input, reference and deblurred images for each hyper-parameter.
+
+        Args:
+            y_slice: Slice for y-axis
+            x_slice: Slice for x-axis
+        """
         idx = 0
         f_hat = list(self._f_hats.items())
         num_img = len(f_hat) + 2
@@ -94,18 +103,18 @@ class Tuner(ABC):
 
         _, axs = plt.subplots(nrows, ncols, figsize=(ncols * 2, nrows * 2))
         axs = axs.ravel()
-        axs[0].imshow(self._g[50:150, 80:180], cmap="gray")
+        axs[0].imshow(self._g[y_slice, x_slice], cmap="gray")
         axs[0].set_title("Input")
         axs[0].axis("off")
 
         for idx in range(1, num_img - 1):
             alpha, img = f_hat[idx - 1]
-            axs[idx].imshow(img[50:150, 80:180], cmap="gray")
+            axs[idx].imshow(img[y_slice, x_slice], cmap="gray")
             axs[idx].set_title(f"Alpha {alpha}")
             axs[idx].axis("off")
 
         if self._f is not None:
-            axs[-1].imshow(self._f[50:150, 80:180], cmap="gray")
+            axs[-1].imshow(self._f[y_slice, x_slice], cmap="gray")
             axs[-1].set_title("Reference")
         axs[-1].axis("off")
 
