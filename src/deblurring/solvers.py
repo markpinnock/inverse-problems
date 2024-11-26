@@ -106,24 +106,6 @@ class Solver(ABC):
         """
         raise NotImplementedError
 
-    def calc_tikhonov_term(
-        self,
-        x: npt.NDArray,
-        L: sp.csr_matrix,
-    ) -> float:
-        """Calculate the Tikhonov functional.
-
-        Args:
-            x: Solution
-            L: Regularisation matrix
-
-        Returns
-        -------
-            float: Tikhonov functional value
-
-        """
-        return float(np.square(L @ x.reshape([-1, 1])).sum() / 2)
-
 
 class GMRESSolver(Solver):
     """GMRES iterative solver."""
