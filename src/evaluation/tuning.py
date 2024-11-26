@@ -273,12 +273,12 @@ class IterativeTuner(Tuner):
         max_iter: int = kwargs.get("max_iter", MAX_ITER)
         tol: float = kwargs.get("tol", TOL)
 
-        self.reset_metrics()
+        self._metrics.reset_metrics()
         self._alphas = []
         self._f_hats = {}
 
+        # Solve for each alpha with blurred image as starting guess
         for alpha in alphas:
-            # Solve for this alpha with blurred image as starting guess
             self._alphas.append(alpha)
             f_hat, it = self.iteratively_solve(
                 alpha=alpha,
@@ -289,37 +289,37 @@ class IterativeTuner(Tuner):
             )
 
             # Calculate metrics
-            self.calculate_metrics(alpha=alpha, f_hat=f_hat)
+            residual = self._g - self._kernel(f_hat)
+            self._metrics.calculate_metrics(
+                alpha=alpha,
+                residual=residual,
+                f_hat=f_hat,
+                L=self._L,
+            )
             if save_imgs:
                 self._f_hats[alpha] = f_hat
 
             if it + 1 == max_iter:
                 logger.warning(
-                    f"Alpha {alpha}: Maximum iterations reached, DP {self._metrics.loc[alpha, 'discrepancy']}",
+                    f"Alpha {alpha}: Maximum iterations reached",
                 )
             else:
-                # Display metrics
-                msg = f"Alpha {alpha}: "
-                if self._f is not None:
-                    msg += f"SSIM {self._metrics.loc[alpha, 'SSIM']}, "
-                if self._noise_variance is not None:
-                    msg += f"DP {self._metrics.loc[alpha, 'discrepancy']}"
-                if self._f is None and self._noise_variance is None:
-                    msg += "No metrics available"
-                logger.info(msg)
+                self._metrics.log_metrics(alpha)
 
         # Get optimal alpha and iteratively solve
-        self.get_optimal_alpha()
+        self._metrics.get_optimal_alpha()
         self._optimal_f_hat, _ = self.iteratively_solve(
-            self._optimal_alpha,
-            L,
-            self._g,
-            max_iter,
-            tol,
+            alpha=self._metrics.optimal_alpha,
+            L=L,
+            prev_f_hat=self._g,
+            max_iter=max_iter,
+            tol=tol,
         )
-
-        # Calculate metrics
-        self.calculate_metrics(alpha="optimal", f_hat=self._optimal_f_hat)
-        logger.info(
-            f"Optimal alpha {self._optimal_alpha}: DP {self.optimal_metrics["discrepancy"]}",
+        residual = self._g - self._kernel(self._optimal_f_hat)
+        self._metrics.calculate_metrics(
+            alpha="optimal",
+            residual=residual,
+            f_hat=self._optimal_f_hat,
+            L=self._L,
         )
+        self._metrics.log_metrics("optimal")
