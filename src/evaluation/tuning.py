@@ -29,8 +29,7 @@ class Tuner(ABC):
     _L: sp.csr_matrix
     _alphas: list[float]
     _f_hats: dict[float, npt.NDArray[np.float64]]
-    _metrics: pd.DataFrame
-    _optimal_alpha: float
+    _metrics: Metrics
     _optimal_f_hat: npt.NDArray[np.float64]
 
     def __init__(
