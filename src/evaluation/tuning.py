@@ -34,14 +34,14 @@ class Tuner(ABC):
 
     def __init__(
         self,
-        solver: Solver,
+        solver: type[Solver],
         g: npt.NDArray,
         A: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
         AT: Callable[[npt.NDArray], npt.NDArray]
         | npt.NDArray
         | sp.csr_matrix
         | None = None,
-        x_dims: list[int] | tuple[int, int] | None = None,
+        x_dims: tuple[int, int] | None = None,
         tuning_metric: str = "discrepancy",
         use_miller: bool = False,
         noise_variance: float | None = None,
