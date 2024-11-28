@@ -1,7 +1,13 @@
 import numpy as np
 import pytest
 
-from common.fft import set_up_kspace
+from common.fft import get_min_max, set_up_kspace
+
+
+@pytest.mark.parametrize("num_samples,expected", [(4, (-2, 1)), (5, (-2, 2))])  # type: ignore[misc]
+def test_get_min_max(num_samples: int, expected: tuple[int, int]) -> None:
+    """Test get_min_max function"""
+    assert get_min_max(num_samples) == expected
 
 
 @pytest.mark.parametrize("num_samples", [8, 9])  # type: ignore[misc]
