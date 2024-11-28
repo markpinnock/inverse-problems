@@ -2,6 +2,26 @@ import numpy as np
 import numpy.typing as npt
 
 
+def get_min_max(num_samples: int) -> tuple[float, float]:
+    """Get minimum and maximum for an array.
+
+    Notes:
+        - This assumes integer spacing between each element
+          and that the array is symmetrical in the odd case
+          and nearly symmetrical in the even case
+
+    Args:
+        num_samples: Number of elements in the array
+
+    Returns:
+        Minimum and maximum element in the array
+    """
+    if num_samples % 2:
+        return -(num_samples // 2), (num_samples // 2)
+    else:
+        return -num_samples / 2, num_samples / 2 - 1
+
+
 def set_up_kspace(
     fov: int,
     num_samples: int,
