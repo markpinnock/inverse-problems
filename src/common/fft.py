@@ -42,14 +42,16 @@ def set_up_kspace(
     delta_k = 1 / fov
 
     # Generate array of k values
-    k_min = (-num_samples / 2) * delta_k
-    k_max = (num_samples / 2 - 1) * delta_k
+    k_min, k_max = get_min_max(num_samples)
+    k_min *= delta_k
+    k_max *= delta_k
     k_values = np.arange(k_min, k_max + delta_k, delta_k)
 
     # Generate array of x values
     delta_x = 1 / (k_max - k_min)
-    x_min = (-num_samples / 2) * delta_x
-    x_max = (num_samples / 2 - 1) * delta_x
+    x_min, x_max = get_min_max(num_samples)
+    x_min *= delta_x
+    x_max *= delta_x
     x_values = np.arange(x_min, x_max + delta_x, delta_x)
 
     return x_values, k_values
