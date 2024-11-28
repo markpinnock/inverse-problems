@@ -1,16 +1,17 @@
 import numpy as np
+import pytest
 
 from common.fft import set_up_kspace
 
 
-def test_set_up_kspace() -> None:
+@pytest.mark.parametrize("num_samples", [8, 9])  # type: ignore[misc]
+def test_set_up_kspace(num_samples: int) -> None:
     """Test set_up_kspace function."""
     # Check that k-space values are correct
     fov = 1
-    num_samples = 16
     _, k_values = set_up_kspace(fov, num_samples)
-    assert k_values[0] == -8
-    assert k_values[-1] == 7
+    assert k_values[0] == -num_samples / 2
+    assert k_values[-1] == num_samples / 2 - 1
 
     # Check that x- and k-values match when k-space FOV passed in
     fov = 2
