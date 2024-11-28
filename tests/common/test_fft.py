@@ -16,8 +16,9 @@ def test_set_up_kspace(num_samples: int) -> None:
     # Check that k-space values are correct
     fov = 1
     _, k_values = set_up_kspace(fov, num_samples)
-    assert k_values[0] == -num_samples / 2
-    assert k_values[-1] == num_samples / 2 - 1
+    k_min, k_max = get_min_max(num_samples)
+    assert k_values[0] == k_min
+    assert k_values[-1] == k_max
 
     # Check that x- and k-values match when k-space FOV passed in
     fov = 2
