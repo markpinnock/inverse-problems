@@ -103,7 +103,6 @@ def fft_1d(
     if x_values is None:
         min_x, max_x = get_min_max(num_samples)
         x_values = np.linspace(min_x, max_x, num_samples)
-    min_x, max_x = x_values.min(), x_values.max()
 
     if len(signal) != len(x_values):
         raise ValueError(
@@ -137,7 +136,6 @@ def ifft_1d(
     if k_values is None:
         min_k, max_k = get_min_max(num_samples)
         k_values = np.linspace(min_k, max_k, num_samples)
-    min_k, max_k = k_values.min(), k_values.max()
 
     if len(k_values) != len(signal_fft):
         raise ValueError(
