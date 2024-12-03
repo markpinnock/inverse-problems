@@ -16,10 +16,7 @@ def get_min_max(num_samples: int) -> tuple[float, float]:
     Returns:
         Minimum and maximum element in the array
     """
-    if num_samples % 2:
-        return -(num_samples // 2), (num_samples // 2)
-    else:
-        return -num_samples / 2, num_samples / 2 - 1
+    return -(num_samples // 2), (num_samples - 1) // 2
 
 
 def set_up_kspace(
