@@ -1,6 +1,37 @@
 import numpy as np
 import numpy.typing as npt
 
+from common.log import get_logger
+
+logger = get_logger(__name__)
+
+
+def rect_function(
+    width: int | float,
+    x_min: int | float,
+    x_max: int | float,
+    num_samples: int,
+    normalised: bool = False,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    x_values = np.linspace(x_min, x_max, num_samples)
+    y_values = np.zeros_like(x_values)
+    height = 1 / width if normalised else 1
+    y_values[(x_values >= -width / 2) & (x_values <= width / 2)] = height
+
+    return y_values, x_values
+
+
+def sinc_function(
+    x_min: int | float,
+    x_max: int | float,
+    num_samples: int,
+    normalised: bool = False,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    x_values = np.linspace(x_min, x_max, num_samples)
+    y_values = np.sinc(x_values) if normalised else np.sinc(x_values / np.pi)
+
+    return y_values, x_values
+
 
 def get_min_max(num_samples: int) -> tuple[float, float]:
     """Get minimum and maximum for an array.
@@ -52,3 +83,76 @@ def set_up_kspace(
     x_values = np.arange(x_min, x_max + delta_x, delta_x)
 
     return x_values, k_values
+
+
+def fft_1d(
+    signal: npt.NDArray,
+    x_values: npt.NDArray | None = None,
+) -> tuple[npt.NDArray[np.complex128], npt.NDArray[np.float64]]:
+    """Get FFT of 1D signal.
+
+    Args:
+        signal: signal values at each x_value
+        x_values: x values (e.g. space or time points)
+
+    Returns:
+        Tuple: k-space values and FFT of signal
+    """
+    num_samples = len(signal)
+
+    if x_values is None:
+        min_x, max_x = get_min_max(num_samples)
+        x_values = np.linspace(min_x, max_x, num_samples)
+    min_x, max_x = x_values.min(), x_values.max()
+
+    if len(signal) != len(x_values):
+        raise ValueError(
+            f"Signal and x values must have same length: {signal.shape} vs. {x_values.shape}",
+        )
+
+    # Generate array of k-space values and FFT
+    k_values = np.fft.fftshift(np.fft.fftfreq(num_samples, x_values[1] - x_values[0]))
+    signal_fft = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(signal)))
+
+    if len(k_values) != len(signal_fft):
+        raise ValueError(
+            f"K-space and FFT array dims must match: {k_values.shape} vs. {signal_fft.shape}",
+        )
+
+    return signal_fft, k_values
+
+
+def ifft_1d(
+    signal_fft: npt.NDArray[np.complex128],
+    k_values: npt.NDArray[np.float64],
+) -> tuple[np.float64, np.float64]:
+    """Get inverse FFT of 1D signal.
+
+    Args:
+        signal_fft: frequency values at each k-value
+        k_values: k space values (i.e. frequency points)
+    """
+    num_samples = len(signal_fft)
+
+    if k_values is None:
+        min_k, max_k = get_min_max(num_samples)
+        k_values = np.linspace(min_k, max_k, num_samples)
+    min_k, max_k = k_values.min(), k_values.max()
+
+    if len(k_values) != len(signal_fft):
+        raise ValueError(
+            f"FFT and k-space dims must match: {signal_fft.shape} vs. {k_values.shape}",
+        )
+
+    x_values = np.fft.fftshift(np.fft.fftfreq(num_samples, k_values[1] - k_values[0]))
+    signal = np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(signal_fft)))
+
+    if len(x_values) != len(signal):
+        raise ValueError(
+            f"Signal and x values must have same length: {signal.shape} vs. {x_values.shape}",
+        )
+
+    if not np.isclose(signal.imag.sum(), 0.0):
+        logger.warning("Result has imaginary component")
+
+    return signal.real, x_values
