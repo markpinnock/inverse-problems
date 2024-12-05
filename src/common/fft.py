@@ -10,7 +10,6 @@ def rect_function_1d(
     width: int | float,
     x_range: tuple[int | float, int | float],
     num_samples: int,
-    normalised: bool = False,
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Create 1D rectangle/box function.
 
@@ -18,15 +17,13 @@ def rect_function_1d(
         width: width of rectangle
         x_range: range of x values
         num_samples: number of points
-        normalised: scale rectangle to be of height 1
 
     Returns:
         y-values and corresponding x-values
     """
     x_values = np.linspace(x_range[0], x_range[1], num_samples)
     y_values = np.zeros_like(x_values)
-    height = 1 / width if normalised else 1
-    y_values[(x_values >= -width / 2) & (x_values <= width / 2)] = height
+    y_values[(x_values >= -width / 2) & (x_values <= width / 2)] = 1
 
     return y_values, x_values
 
@@ -38,7 +35,6 @@ def rect_function_2d(
     y_range: tuple[int | float, int | float],
     num_x: int,
     num_y: int,
-    normalised: bool = False,
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Create 2D rectangle/box function.
 
@@ -49,7 +45,6 @@ def rect_function_2d(
         y_range: range of y values
         num_x: number of points on x side
         num_y: number of points on y side
-        normalised: scale rectangle to be of height 1
 
     Returns:
         z-values and corresponding y-values and x-values
@@ -59,13 +54,12 @@ def rect_function_2d(
         np.linspace(y_range[0], y_range[1], num_y),
     )
     z_values = np.zeros_like(x_grid)
-    height = 1 / (x_width * y_width) if normalised else 1
     z_values[
         (x_grid >= -x_width / 2)
         & (x_grid <= x_width / 2)
         & (y_grid >= -y_width / 2)
         & (y_grid <= y_width / 2)
-    ] = height
+    ] = 1
 
     return z_values, x_grid, y_grid
 
