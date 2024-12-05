@@ -70,13 +70,22 @@ def rect_function_2d(
     return z_values, x_grid, y_grid
 
 
-def sinc_function(
-    x_min: int | float,
-    x_max: int | float,
+def sinc_function_1d(
+    x_range: tuple[int | float, int | float],
     num_samples: int,
     normalised: bool = False,
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
-    x_values = np.linspace(x_min, x_max, num_samples)
+    """Create 1D sinc function.
+
+    Args:
+        x_range: range of x values
+        num_samples: number of points
+        normalised: normalised sinc function
+
+    Returns:
+        y-values and corresponding x-values
+    """
+    x_values = np.linspace(x_range[0], x_range[1], num_samples)
     y_values = np.sinc(x_values) if normalised else np.sinc(x_values / np.pi)
 
     return y_values, x_values
