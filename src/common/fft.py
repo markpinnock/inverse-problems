@@ -31,6 +31,45 @@ def rect_function_1d(
     return y_values, x_values
 
 
+def rect_function_2d(
+    x_width: int | float,
+    y_width: int | float,
+    x_range: tuple[int | float, int | float],
+    y_range: tuple[int | float, int | float],
+    num_x: int,
+    num_y: int,
+    normalised: bool = False,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Create 2D rectangle/box function.
+
+    Args:
+        x_width: width of rectangle on x side
+        y_width: width of rectangle on y side
+        x_range: range of x values
+        y_range: range of y values
+        num_x: number of points on x side
+        num_y: number of points on y side
+        normalised: scale rectangle to be of height 1
+
+    Returns:
+        x-values and corresponding y-values and x-values
+    """
+    x_grid, y_grid = np.meshgrid(
+        np.linspace(x_range[0], x_range[1], num_x),
+        np.linspace(y_range[0], y_range[1], num_y),
+    )
+    z_values = np.zeros_like(x_grid)
+    height = 1 / (x_width * y_width) if normalised else 1
+    z_values[
+        (x_grid >= -x_width / 2)
+        & (x_grid <= x_width / 2)
+        & (y_grid >= -y_width / 2)
+        & (y_grid <= y_width / 2)
+    ] = height
+
+    return z_values, x_grid, y_grid
+
+
 def sinc_function(
     x_min: int | float,
     x_max: int | float,
