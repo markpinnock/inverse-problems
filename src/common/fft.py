@@ -195,7 +195,7 @@ def fft_1d(
 
     # Ensure regular grid
     dx = np.diff(x_values)
-    if not np.isclose(dx, dx[0]):
+    if not np.isclose(dx, dx[0]).all():
         raise ValueError(
             "Function only defined for regular spatial/temporal coordinates",
         )
@@ -235,7 +235,7 @@ def ifft_1d(
 
     # Ensure regular grid
     dk = np.diff(k_values)
-    if not np.isclose(dk, dk[0]):
+    if not np.isclose(dk, dk[0]).all():
         raise ValueError(
             "Function only defined for regular spatial/temporal frequency coordinates",
         )
