@@ -193,6 +193,13 @@ def fft_1d(
             f"Signal and x values must have same length: {signal.shape} vs. {x_values.shape}",
         )
 
+    # Ensure regular grid
+    dx = np.diff(x_values)
+    if not np.isclose(dx, dx[0]):
+        raise ValueError(
+            "Function only defined for regular spatial/temporal coordinates",
+        )
+
     # Generate array of k-space values and FFT
     k_values = np.fft.fftshift(np.fft.fftfreq(num_samples, x_values[1] - x_values[0]))
     signal_fft = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(signal)))
@@ -224,6 +231,13 @@ def ifft_1d(
     if len(k_values) != len(signal_fft):
         raise ValueError(
             f"FFT and k-space dims must match: {signal_fft.shape} vs. {k_values.shape}",
+        )
+
+    # Ensure regular grid
+    dk = np.diff(k_values)
+    if not np.isclose(dk, dk[0]):
+        raise ValueError(
+            "Function only defined for regular spatial/temporal frequency coordinates",
         )
 
     x_values = np.fft.fftshift(np.fft.fftfreq(num_samples, k_values[1] - k_values[0]))
