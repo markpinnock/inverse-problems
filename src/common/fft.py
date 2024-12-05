@@ -52,7 +52,7 @@ def rect_function_2d(
         normalised: scale rectangle to be of height 1
 
     Returns:
-        x-values and corresponding y-values and x-values
+        z-values and corresponding y-values and x-values
     """
     x_grid, y_grid = np.meshgrid(
         np.linspace(x_range[0], x_range[1], num_x),
@@ -89,6 +89,38 @@ def sinc_function_1d(
     y_values = np.sinc(x_values) if normalised else np.sinc(x_values / np.pi)
 
     return y_values, x_values
+
+
+def sinc_function_2d(
+    x_range: tuple[int | float, int | float],
+    y_range: tuple[int | float, int | float],
+    num_x: int,
+    num_y: int,
+    normalised: bool = False,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Create 2D sinc function.
+
+    Args:
+        x_range: range of x values
+        y_range: range of y values
+        num_x: number of points on x side
+        num_y: number of points on y side
+        normalised: normalised sinc function
+
+    Returns:
+        z-values and corresponding y-values and x-values
+    """
+    x_grid, y_grid = np.meshgrid(
+        np.linspace(x_range[0], x_range[1], num_x),
+        np.linspace(y_range[0], y_range[1], num_y),
+    )
+    z_values = (
+        np.sinc(x_grid) * np.sinc(y_grid)
+        if normalised
+        else np.sinc(x_grid / np.pi) * np.sinc(y_grid / np.pi)
+    )
+
+    return z_values, x_grid, y_grid
 
 
 def get_min_max(num_samples: int) -> tuple[float, float]:
