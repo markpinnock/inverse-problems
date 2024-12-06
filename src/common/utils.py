@@ -184,3 +184,31 @@ def get_min_max(num_samples: int) -> tuple[float, float]:
         Minimum and maximum element in the array
     """
     return -(num_samples // 2), (num_samples - 1) // 2
+
+
+def rect_phantom(
+    img_dims: tuple[int, int],
+    phantom_dims: tuple[int, int],
+) -> npt.NDArray[np.float64]:
+    """Create image with white and black regions.
+
+    Notes:
+        - rect_phantom((4, 4), (2, 2)) will create the following image:
+          0 0 0 0
+          0 1 0 0
+          0 0 1 0
+          0 0 0 0
+
+    Args:
+        img_dims: height and width of the image
+        phantom_dims: height and width of the phantom
+    """
+    half_width_y = phantom_dims[0] // 2
+    half_width_x = phantom_dims[1] // 2
+    centre_y = img_dims[0] // 2
+    centre_x = img_dims[1] // 2
+    img = np.zeros(img_dims)
+    img[centre_y - half_width_y : centre_y, centre_x - half_width_x : centre_x] = 1
+    img[centre_y : centre_y + half_width_y, centre_x : centre_x + half_width_x] = 1
+
+    return img
