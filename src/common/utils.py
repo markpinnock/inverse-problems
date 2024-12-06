@@ -56,3 +56,131 @@ def step_func_gen(N: int) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float
         ys[idx] = vals[i]
 
     return xs, ys
+
+
+def rect_function_1d(
+    width: int | float,
+    x_range: tuple[int | float, int | float],
+    num_samples: int,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Create 1D rectangle/box function.
+
+    Args:
+        width: width of rectangle
+        x_range: range of x values
+        num_samples: number of points
+
+    Returns:
+        y-values and corresponding x-values
+    """
+    x_values = np.linspace(x_range[0], x_range[1], num_samples)
+    y_values = np.zeros_like(x_values)
+    y_values[(x_values >= -width / 2) & (x_values <= width / 2)] = 1
+
+    return y_values, x_values
+
+
+def rect_function_2d(
+    x_width: int | float,
+    y_width: int | float,
+    x_range: tuple[int | float, int | float],
+    y_range: tuple[int | float, int | float],
+    num_x: int,
+    num_y: int,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Create 2D rectangle/box function.
+
+    Args:
+        x_width: width of rectangle on x side
+        y_width: width of rectangle on y side
+        x_range: range of x values
+        y_range: range of y values
+        num_x: number of points on x side
+        num_y: number of points on y side
+
+    Returns:
+        z-values and corresponding y-values and x-values
+    """
+    x_grid, y_grid = np.meshgrid(
+        np.linspace(x_range[0], x_range[1], num_x),
+        np.linspace(y_range[0], y_range[1], num_y),
+    )
+    z_values = np.zeros_like(x_grid)
+    z_values[
+        (x_grid >= -x_width / 2)
+        & (x_grid <= x_width / 2)
+        & (y_grid >= -y_width / 2)
+        & (y_grid <= y_width / 2)
+    ] = 1
+
+    return z_values, x_grid, y_grid
+
+
+def sinc_function_1d(
+    x_range: tuple[int | float, int | float],
+    num_samples: int,
+    normalised: bool = False,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Create 1D sinc function.
+
+    Args:
+        x_range: range of x values
+        num_samples: number of points
+        normalised: normalised sinc function
+
+    Returns:
+        y-values and corresponding x-values
+    """
+    x_values = np.linspace(x_range[0], x_range[1], num_samples)
+    y_values = np.sinc(x_values) if normalised else np.sinc(x_values / np.pi)
+
+    return y_values, x_values
+
+
+def sinc_function_2d(
+    x_range: tuple[int | float, int | float],
+    y_range: tuple[int | float, int | float],
+    num_x: int,
+    num_y: int,
+    normalised: bool = False,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Create 2D sinc function.
+
+    Args:
+        x_range: range of x values
+        y_range: range of y values
+        num_x: number of points on x side
+        num_y: number of points on y side
+        normalised: normalised sinc function
+
+    Returns:
+        z-values and corresponding y-values and x-values
+    """
+    x_grid, y_grid = np.meshgrid(
+        np.linspace(x_range[0], x_range[1], num_x),
+        np.linspace(y_range[0], y_range[1], num_y),
+    )
+    z_values = (
+        np.sinc(x_grid) * np.sinc(y_grid)
+        if normalised
+        else np.sinc(x_grid / np.pi) * np.sinc(y_grid / np.pi)
+    )
+
+    return z_values, x_grid, y_grid
+
+
+def get_min_max(num_samples: int) -> tuple[float, float]:
+    """Get minimum and maximum for an array.
+
+    Notes:
+        - This assumes integer spacing between each element
+          and that the array is symmetrical in the odd case
+          and nearly symmetrical in the even case
+
+    Args:
+        num_samples: Number of elements in the array
+
+    Returns:
+        Minimum and maximum element in the array
+    """
+    return -(num_samples // 2), (num_samples - 1) // 2
