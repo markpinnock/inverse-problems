@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from common.fft import fft_1d, fft_2d, get_min_max, ifft_1d, ifft_2d, set_up_kspace
-from common.utils import sinc_function_1d, sinc_function_2d
+from common.fft import fft_1d, fft_2d, ifft_1d, ifft_2d, set_up_kspace
+from common.utils import get_min_max, sinc_function_1d, sinc_function_2d
 
 
 @pytest.mark.parametrize("num_samples,expected", [(4, (-2, 1)), (5, (-2, 2))])  # type: ignore[misc]
