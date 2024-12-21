@@ -8,15 +8,13 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.sparse as sp
 
+from common.constants import MAX_ITER, TOL
 from common.log import get_logger
 from common.operators import ConvolutionMode
 from deblurring.solvers import Solver
 from evaluation.eval_metrics import Metrics
 
 logger = get_logger(__name__)
-
-MAX_ITER = 100
-TOL = 1e-6
 
 
 class Tuner(ABC):
