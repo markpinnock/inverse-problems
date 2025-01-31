@@ -16,8 +16,8 @@ MAX_ITER = 100
 OperatorType = Union[Callable[[npt.NDArray], npt.NDArray], npt.NDArray, sp.csr_matrix]
 
 
-class Solver(ABC):
-    """Abstract class for iterative solvers."""
+class LstSqSolver(ABC):
+    """Abstract class for iterative least squares-type solvers."""
 
     _b: npt.NDArray  # Blurred image
     _b_dims: tuple[int, int]  # Dimensions of the blurred image
@@ -104,7 +104,7 @@ class Solver(ABC):
         raise NotImplementedError
 
 
-class GMRESSolver(Solver):
+class GMRESSolver(LstSqSolver):
     """GMRES iterative solver."""
 
     def __init__(
@@ -196,7 +196,7 @@ class GMRESSolver(Solver):
         return x_hat.reshape(self._x_dims)
 
 
-class LSQRSolver(Solver):
+class LSQRSolver(LstSqSolver):
     """LSQR iterative solver."""
 
     def __init__(
