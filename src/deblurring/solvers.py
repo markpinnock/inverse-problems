@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -12,6 +12,8 @@ from common.utils import kernel_to_func
 logger = get_logger(__name__)
 
 MAX_ITER = 100
+
+OperatorType = Union[Callable[[npt.NDArray], npt.NDArray], npt.NDArray, sp.csr_matrix]
 
 
 class Solver(ABC):
@@ -28,13 +30,8 @@ class Solver(ABC):
     def __init__(
         self,
         b: npt.NDArray,
-        A: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        | npt.NDArray
-        | sp.csr_matrix,
-        AT: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        | npt.NDArray
-        | sp.csr_matrix
-        | None = None,
+        A: OperatorType,
+        AT: OperatorType | None = None,
         x_dims: tuple[int, int] | None = None,
     ):
         """Initialise Solver class.
@@ -113,13 +110,8 @@ class GMRESSolver(Solver):
     def __init__(
         self,
         b: npt.NDArray,
-        A: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        | npt.NDArray
-        | sp.csr_matrix,
-        AT: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        | npt.NDArray
-        | sp.csr_matrix
-        | None = None,
+        A: OperatorType,
+        AT: OperatorType | None = None,
         x_dims: tuple[int, int] | None = None,
     ):
         """Initialise GMRES Solver class.
@@ -210,13 +202,8 @@ class LSQRSolver(Solver):
     def __init__(
         self,
         b: npt.NDArray,
-        A: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        | npt.NDArray
-        | sp.csr_matrix,
-        AT: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]
-        | npt.NDArray
-        | sp.csr_matrix
-        | None = None,
+        A: OperatorType,
+        AT: OperatorType | None = None,
         x_dims: tuple[int, int] | None = None,
     ):
         """Initialise LSQR Solver class.
