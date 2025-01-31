@@ -12,7 +12,7 @@ from common.constants import MAX_ITER, TOL
 from common.log import get_logger
 from common.operators import ConvolutionMode
 from evaluation.eval_metrics import Metrics
-from solvers.solvers import LstSqSolver
+from solvers.least_square import LstSqSolver
 
 logger = get_logger(__name__)
 
