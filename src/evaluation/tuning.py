@@ -11,8 +11,8 @@ import scipy.sparse as sp
 from common.constants import MAX_ITER, TOL
 from common.log import get_logger
 from common.operators import ConvolutionMode
-from deblurring.solvers import Solver
 from evaluation.eval_metrics import Metrics
+from solvers.solvers import LstSqSolver
 
 logger = get_logger(__name__)
 
@@ -32,7 +32,7 @@ class Tuner(ABC):
 
     def __init__(
         self,
-        solver: type[Solver],
+        solver: type[LstSqSolver],
         g: npt.NDArray,
         A: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
         AT: Callable[[npt.NDArray], npt.NDArray]

@@ -6,7 +6,7 @@ import pytest
 import scipy.sparse as sp
 from scipy.signal import convolve2d
 
-from deblurring.solvers import GMRESSolver, LSQRSolver
+from solvers.solvers import GMRESSolver, LSQRSolver
 
 
 @pytest.mark.parametrize(("alpha", "expected"), [(0.0, 1.0), (1.0, 0.0), (2.0, -1.0)])  # type: ignore[misc]
