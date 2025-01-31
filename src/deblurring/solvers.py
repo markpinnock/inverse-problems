@@ -1,3 +1,5 @@
+"""Least square type solvers: GMRES and LSQR."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Union
