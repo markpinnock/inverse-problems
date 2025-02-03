@@ -307,7 +307,7 @@ class LSQRSolver(LstSqSolver):
         it = lsqr_output[2]
 
         if verbose and it <= MAX_ITER:
-            logger.info(f"Converged in {it} iterations")
+            logger.info(f"Converged in {it + 1} iterations")
         elif it > MAX_ITER:
             logger.warning("Did not converge")
 
