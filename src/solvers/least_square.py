@@ -2,20 +2,18 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sp
 
 from common.log import get_logger
-from common.utils import kernel_to_func
+from common.utils import OperatorType, kernel_to_func
 
 logger = get_logger(__name__)
 
 MAX_ITER = 100
-
-OperatorType = Union[Callable[[npt.NDArray], npt.NDArray], npt.NDArray, sp.csr_matrix]
 
 
 class LstSqSolver(ABC):
