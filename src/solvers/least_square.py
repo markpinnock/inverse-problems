@@ -88,7 +88,7 @@ class LstSqSolver(ABC):
         x0: npt.NDArray | None = None,
         verbose: bool = True,
         **kwargs: dict[str, Any],
-    ) -> npt.NDArray:
+    ) -> npt.NDArray[np.float64]:
         """Solve the inverse problem.
 
         Args:
@@ -147,7 +147,7 @@ class GMRESSolver(LstSqSolver):
         x0: npt.NDArray | None = None,
         verbose: bool = True,
         **kwargs: dict[str, Any],
-    ) -> npt.NDArray:
+    ) -> npt.NDArray[np.float64]:
         """Solve the inverse problem.
 
         Args:
@@ -241,7 +241,7 @@ class LSQRSolver(LstSqSolver):
         x0: npt.NDArray | None = None,
         verbose: bool = True,
         **kwargs: dict[str, Any],
-    ) -> npt.NDArray:
+    ) -> npt.NDArray[np.float64]:
         """Solve the inverse problem.
 
         Args:
