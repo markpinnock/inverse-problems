@@ -109,23 +109,6 @@ class LstSqSolver(ABC):
 class GMRESSolver(LstSqSolver):
     """GMRES iterative solver."""
 
-    def __init__(
-        self,
-        b: npt.NDArray,
-        A: OperatorType,
-        AT: OperatorType | None = None,
-        x_dims: tuple[int, int] | None = None,
-    ):
-        """Initialise GMRES Solver class.
-
-        Args:
-            b: Blurred image
-            A: Forward operator (function, numpy array or sparse matrix)
-            AT: Adjoint operator (function, numpy array or sparse matrix)
-            x_dims: Dimensions of the solution
-        """
-        super().__init__(b, A, AT, x_dims)
-
     def ATA_op(
         self,
         x_flat: npt.NDArray,
@@ -200,23 +183,6 @@ class GMRESSolver(LstSqSolver):
 
 class LSQRSolver(LstSqSolver):
     """LSQR iterative solver."""
-
-    def __init__(
-        self,
-        b: npt.NDArray,
-        A: OperatorType,
-        AT: OperatorType | None = None,
-        x_dims: tuple[int, int] | None = None,
-    ):
-        """Initialise LSQR Solver class.
-
-        Args:
-            b: Blurred image
-            A: Forward operator (function, numpy array or sparse matrix)
-            AT: Adjoint operator (function, numpy array or sparse matrix)
-            x_dims: Dimensions of the solution
-        """
-        super().__init__(b, A, AT, x_dims)
 
     def A_op(
         self,
