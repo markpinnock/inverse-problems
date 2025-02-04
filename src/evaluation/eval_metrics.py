@@ -52,10 +52,8 @@ class Metrics:
 
         if tuning_metric in ["MSE", "pSNR", "SSIM"] and f is None:
             raise ValueError("No reference image provided for quality metrics")
-        elif tuning_metric == "discrepancy" and noise_variance is None:
+        if tuning_metric == "discrepancy" and noise_variance is None:
             raise ValueError("No noise variance provided for discrepancy principle")
-        else:
-            logger.warning("No valid reference provided")
 
     def reset_metrics(self) -> None:
         """Reset metrics dataframe."""
