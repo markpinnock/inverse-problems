@@ -74,7 +74,7 @@ class LstSqSolver(ABC):
             L = sp.eye(self._flat_x_dims)
 
         if x0 is None:
-            x0 = np.zeros(self._flat_x_dims)
+            x0 = self._b.copy()
 
         return L, x0
 
