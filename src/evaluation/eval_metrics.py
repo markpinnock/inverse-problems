@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import scipy.sparse as sp
 from skimage.metrics import (
     mean_squared_error,
     peak_signal_noise_ratio,
@@ -70,23 +69,21 @@ class Metrics:
         ]
         self._metrics_df = pd.DataFrame(columns=metric_columns)
 
-    def calc_tikhonov_term(
+    def calc_tikhonov_penalty(
         self,
-        f_hat: npt.NDArray[np.float64],
-        L: sp.csr_matrix,
+        penalty_term: npt.NDArray[np.float64],
     ) -> float:
         """Calculate the Tikhonov functional.
 
         Args:
-            f_hat: Solution
-            L: Regularisation matrix
+            penalty_term: Penalty term: Lx
 
         Returns
         -------
             float: Tikhonov functional value
 
         """
-        return float(np.square(L @ f_hat.reshape([-1, 1])).sum() / 2)
+        return float(np.square(penalty_term).sum() / 2)
 
     def calc_dicrepancy_principle(self, residual: npt.NDArray[np.float64]) -> float:
         """Calculate the discrepancy principle (non-Miller method).
@@ -101,38 +98,34 @@ class Metrics:
     def calc_miller_criterion(
         self,
         residual: npt.NDArray[np.float64],
-        f_hat: npt.NDArray[np.float64],
-        L: sp.csr_matrix,
+        penalty_term: npt.NDArray[np.float64],
     ) -> float:
         """Calculate the Miller discrepancy principle.
 
         Args:
             residual: Residual image
-            f_hat: Solution
-            L: Regularisation matrix
+            penalty_term: Penalty term: Lx
         """
         residual = residual.reshape([-1, 1])
         residual_norm = np.square(residual).sum() / (2 * self._noise_variance)  # type: ignore[operator]
 
-        return float((residual_norm - L @ f_hat).squeeze())
+        return float(residual_norm - penalty_term)
 
     def calc_discrepancy(
         self,
         residual: npt.NDArray[np.float64],
-        f_hat: npt.NDArray[np.float64],
-        L: sp.csr_matrix,
+        penalty_term: npt.NDArray[np.float64],
     ) -> float:
         """Calculate the discrepancy principle.
 
         Args:
             residual: Residual image
-            f_hat: Solution
-            L: Regularisation matrix
+            penalty_term: Penalty term: Lx
         """
         return (
             self.calc_dicrepancy_principle(residual)
             if self._use_miller is not None
-            else self.calc_miller_criterion(residual, f_hat, L)
+            else self.calc_miller_criterion(residual, penalty_term)
         )
 
     def calculate_metrics(
@@ -140,27 +133,26 @@ class Metrics:
         alpha: float | str,
         residual: npt.NDArray[np.float64],
         f_hat: npt.NDArray[np.float64],
-        L: sp.csr_matrix,
+        penalty_term: npt.NDArray[np.float64],
     ) -> None:
         """Calculate metrics for a given regularisation hyper-parameter.
 
         Args:
             alpha: Regularisation hyper-parameter
+            f_hat: Reconstructed image
             residual: Residual image
-            f_hat: Deblurred image
+            penalty_term: Penalty term: Lx
             L: Regularisation matrix
         """
         self._metrics_df.loc[alpha, "residual_norm"] = np.square(residual).sum()
-        self._metrics_df.loc[alpha, "tikhonov"] = self.calc_tikhonov_term(
-            f_hat=f_hat,
-            L=L,
+        self._metrics_df.loc[alpha, "tikhonov"] = self.calc_tikhonov_penalty(
+            penalty_term=penalty_term,
         )
 
         if self._noise_variance is not None:
             self._metrics_df.loc[alpha, "discrepancy"] = self.calc_discrepancy(
                 residual=residual,
-                f_hat=f_hat,
-                L=L,
+                penalty_term=penalty_term,
             )
 
         if self._f is not None:
