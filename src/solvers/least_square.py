@@ -67,7 +67,7 @@ class LstSqSolver(ABC):
 
         Returns
         -------
-            Tuple: Regularisation matrix and initial guess
+            Tuple: Regularisation matrix and flattened initial guess
 
         """
         if L is None:
@@ -76,7 +76,7 @@ class LstSqSolver(ABC):
         if x0 is None:
             x0 = self._b.copy()
 
-        return L, x0
+        return L, x0.flatten()
 
     @abstractmethod
     def solve(
