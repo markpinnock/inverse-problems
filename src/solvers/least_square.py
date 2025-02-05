@@ -158,7 +158,7 @@ class GMRESSolver(LstSqSolver):
         Returns
             npt.NDArray: Solution
         """
-        L, x0 = self._prepare(L, x0)
+        L, x0_flat = self._prepare(L, x0)
         LTL = L.T @ L
 
         # Set up sparse operators
@@ -169,14 +169,14 @@ class GMRESSolver(LstSqSolver):
         ATb = self.ATb_op()
 
         # Run GMRES
-        x_hat, res = sp.linalg.gmres(A=ATA, b=ATb, x0=x0, **kwargs)
+        x_hat_flat, res = sp.linalg.gmres(A=ATA, b=ATb, x0=x0_flat, **kwargs)
 
         if res == 0 and verbose:
             logger.info("Successfully converged")
         elif res != 0:
             logger.warning("Did not converge")
 
-        return x_hat.reshape(self._x_dims)
+        return x_hat_flat.reshape(self._x_dims)
 
 
 class LSQRSolver(LstSqSolver):
@@ -255,7 +255,7 @@ class LSQRSolver(LstSqSolver):
         if "iter_lim" not in kwargs:
             kwargs["iter_lim"] = MAX_ITER  # type: ignore[assignment]
 
-        L, x0 = self._prepare(L, x0)
+        L, x0_flat = self._prepare(L, x0)
 
         b_flat = np.reshape(self._b, [-1, 1])
         b_aug = np.vstack([b_flat, np.zeros([L.shape[0], 1])])
@@ -266,8 +266,8 @@ class LSQRSolver(LstSqSolver):
             rmatvec=lambda b: self.AT_op(b, alpha=alpha, L=L),
         )
 
-        lsqr_output = sp.linalg.lsqr(A=A, b=b_aug, x0=x0, show=verbose, **kwargs)
-        f_hat = lsqr_output[0]
+        lsqr_output = sp.linalg.lsqr(A=A, b=b_aug, x0=x0_flat, show=verbose, **kwargs)
+        f_hat_flat = lsqr_output[0]
         it = lsqr_output[2]
 
         if verbose and it <= MAX_ITER:
@@ -275,4 +275,4 @@ class LSQRSolver(LstSqSolver):
         elif it > MAX_ITER:
             logger.warning("Did not converge")
 
-        return f_hat.reshape(self._x_dims)
+        return f_hat_flat.reshape(self._x_dims)
