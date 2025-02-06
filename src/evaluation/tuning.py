@@ -67,6 +67,7 @@ class Tuner(ABC):
         self,
         alphas: list[float],
         L: Callable[..., sp.csr_matrix | npt.NDArray],
+        x0: npt.NDArray | None = None,
         save_imgs: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -75,6 +76,7 @@ class Tuner(ABC):
         Args:
             alphas: List of regularisation hyper-parameters
             L: Sparse regularisation matrix or function returning it
+            x0: Initial guess
             save_imgs: Cache deblurred images for each hyper-parameter
         """
         raise NotImplementedError
@@ -144,6 +146,7 @@ class StandardTuner(Tuner):
         self,
         alphas: list[float],
         L: Callable[..., sp.csr_matrix | npt.NDArray],
+        x0: npt.NDArray | None = None,
         save_imgs: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -156,14 +159,10 @@ class StandardTuner(Tuner):
         Args:
             alphas: List of regularisation hyper-parameters
             L: Function returning sparse regularisation matrix
+            x0: Initial guess
             save_imgs: Cache deblurred images for each hyper-parameter
         """
         self._L = L(self._g, conv_mode=ConvolutionMode.PERIODIC)
-        if not isinstance(self._L, sp.csr_matrix):
-            raise ValueError(
-                f"L must be a function returning a sparse matrix, got: {type(self._L)}",
-            )
-
         self._metrics.reset_metrics()
         self._alphas = []
         self._f_hats = {}
@@ -171,7 +170,7 @@ class StandardTuner(Tuner):
         # Solve for each alpha
         for alpha in alphas:
             self._alphas.append(alpha)
-            f_hat = self._solver.solve(alpha=alpha, L=self._L, verbose=False)
+            f_hat = self._solver.solve(alpha=alpha, L=self._L, x0=x0, verbose=False)
 
             # Calculate metrics
             residual = self._g - self._kernel(f_hat)
@@ -190,6 +189,7 @@ class StandardTuner(Tuner):
         self._optimal_f_hat = self._solver.solve(
             alpha=self._metrics.optimal_alpha,
             L=self._L,
+            x0=x0,
             verbose=False,
         )
         residual = self._g - self._kernel(self._optimal_f_hat)
@@ -209,7 +209,7 @@ class IterativeTuner(Tuner):
         self,
         alpha: float,
         L: Callable[..., sp.csr_matrix],
-        prev_f_hat: npt.NDArray,
+        x0: npt.NDArray,
         max_iter: int,
         tol: float,
     ) -> tuple[npt.NDArray[np.float64], int]:
@@ -222,7 +222,7 @@ class IterativeTuner(Tuner):
         Args:
             alpha: Regularisation parameter
             L: Function creating sparse matrix
-            prev_f_hat: Previous deblurred image
+            x0: Initial guess
             max_iter: Maximum number of iterations
             tol: Convergence tolerance
 
@@ -230,6 +230,8 @@ class IterativeTuner(Tuner):
         -------
             Tuple: Deblurred image and number of iterations
         """
+        prev_f_hat = x0.copy()
+
         for it in range(max_iter):
             # Get previous residual norm
             prev_residual = self._g - self._kernel(prev_f_hat)
@@ -240,7 +242,7 @@ class IterativeTuner(Tuner):
             f_hat = self._solver.solve(
                 alpha=alpha,
                 L=self._L,
-                x0=prev_f_hat.flatten(),
+                x0=prev_f_hat,
                 verbose=False,
             )
             prev_f_hat = f_hat
@@ -257,6 +259,7 @@ class IterativeTuner(Tuner):
         self,
         alphas: list[float],
         L: Callable[..., sp.csr_matrix | npt.NDArray],
+        x0: npt.NDArray | None = None,
         save_imgs: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -269,14 +272,11 @@ class IterativeTuner(Tuner):
         Args:
             alphas: List of regularisation hyper-parameters
             L: Sparse regularisation matrix or function returning it
+            x0: Initial guess
             save_imgs: Cache deblurred images for each hyper-parameter
             max_iter: Maximum number of iterations
             tol: Convergence tolerance
         """
-        if not isinstance(L, sp.csr_matrix):
-            raise ValueError(
-                f"L must be a function returning a sparse matrix, got: {type(L)}",
-            )
         max_iter: int = kwargs.get("max_iter", MAX_ITER)
         tol: float = kwargs.get("tol", TOL)
 
@@ -284,13 +284,16 @@ class IterativeTuner(Tuner):
         self._alphas = []
         self._f_hats = {}
 
+        if x0 is None:
+            x0 = self._g.copy()
+
         # Solve for each alpha with blurred image as starting guess
         for alpha in alphas:
             self._alphas.append(alpha)
             f_hat, it = self.iteratively_solve(
                 alpha=alpha,
                 L=L,
-                prev_f_hat=self._g,
+                x0=x0,
                 max_iter=max_iter,
                 tol=tol,
             )
@@ -318,7 +321,7 @@ class IterativeTuner(Tuner):
         self._optimal_f_hat, _ = self.iteratively_solve(
             alpha=self._metrics.optimal_alpha,
             L=L,
-            prev_f_hat=self._g,
+            x0=x0,
             max_iter=max_iter,
             tol=tol,
         )
