@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import partial
-from typing import Any
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -9,10 +9,10 @@ from scipy.signal import convolve2d
 
 from common.operators import ConvolutionMode
 
+OperatorType = Union[Callable[[npt.NDArray], npt.NDArray], npt.NDArray, sp.csr_matrix]
 
-def kernel_to_func(
-    kernel: Callable[[Any], npt.NDArray] | npt.NDArray | sp.csr_matrix,
-) -> Callable[[npt.NDArray], npt.NDArray]:
+
+def kernel_to_func(kernel: OperatorType) -> Callable[[npt.NDArray], npt.NDArray]:
     """Convert blurring kernel to function.
 
     Args:

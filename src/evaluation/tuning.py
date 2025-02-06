@@ -11,8 +11,9 @@ import scipy.sparse as sp
 from common.constants import MAX_ITER, TOL
 from common.log import get_logger
 from common.operators import ConvolutionMode
-from deblurring.solvers import Solver
+from common.utils import OperatorType
 from evaluation.eval_metrics import Metrics
+from solvers.least_square import LstSqSolver
 
 logger = get_logger(__name__)
 
@@ -24,7 +25,6 @@ class Tuner(ABC):
         This determines the optimal alpha using the discrepancy principle.
     """
 
-    _L: sp.csr_matrix
     _alphas: list[float]
     _f_hats: dict[float, npt.NDArray[np.float64]]
     _metrics: Metrics
@@ -32,13 +32,10 @@ class Tuner(ABC):
 
     def __init__(
         self,
-        solver: type[Solver],
+        solver: type[LstSqSolver],
         g: npt.NDArray,
-        A: Callable[[npt.NDArray], npt.NDArray] | npt.NDArray | sp.csr_matrix,
-        AT: Callable[[npt.NDArray], npt.NDArray]
-        | npt.NDArray
-        | sp.csr_matrix
-        | None = None,
+        A: OperatorType,
+        AT: OperatorType | None = None,
         x_dims: tuple[int, int] | None = None,
         tuning_metric: str = "discrepancy",
         use_miller: bool = False,
@@ -68,7 +65,8 @@ class Tuner(ABC):
     def parameter_sweep(
         self,
         alphas: list[float],
-        L: sp.csr_matrix | Callable[[npt.NDArray, str], sp.csr_matrix],
+        L_func: Callable[..., sp.csr_matrix | npt.NDArray],
+        x0: npt.NDArray | None = None,
         save_imgs: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -76,7 +74,8 @@ class Tuner(ABC):
 
         Args:
             alphas: List of regularisation hyper-parameters
-            L: Sparse regularisation matrix or function returning it
+            L_func: Sparse regularisation matrix or function returning it
+            x0: Initial guess
             save_imgs: Cache deblurred images for each hyper-parameter
         """
         raise NotImplementedError
@@ -145,39 +144,41 @@ class StandardTuner(Tuner):
     def parameter_sweep(
         self,
         alphas: list[float],
-        L: sp.csr_matrix | Callable[[npt.NDArray, str], sp.csr_matrix],
+        L_func: Callable[..., sp.csr_matrix | npt.NDArray],
+        x0: npt.NDArray | None = None,
         save_imgs: bool = False,
         **kwargs: Any,
     ) -> None:
         """Perform a parameter sweep over a range of regularisation hyper-parameters.
 
+        Notes:
+            - L_func should be a function returning a sparse matrix
+            - These can be found in src.common.operators
+
         Args:
             alphas: List of regularisation hyper-parameters
-            L: Sparse regularisation matrix or function returning it
+            L_func: Function returning sparse regularisation matrix
+            x0: Initial guess
             save_imgs: Cache deblurred images for each hyper-parameter
         """
-        if not isinstance(L, sp.csr_matrix):
-            raise ValueError(
-                f"L must be of type `scipy.sparse.csr_matrix`, got: {type(L)}",
-            )
-
+        L = L_func(self._g, conv_mode=ConvolutionMode.PERIODIC)
         self._metrics.reset_metrics()
-        self._L = L
         self._alphas = []
         self._f_hats = {}
 
         # Solve for each alpha
         for alpha in alphas:
             self._alphas.append(alpha)
-            f_hat = self._solver.solve(alpha=alpha, L=L, verbose=False)
+            f_hat = self._solver.solve(alpha=alpha, L=L, x0=x0, verbose=False)
 
             # Calculate metrics
+            L = L_func(f_hat, conv_mode=ConvolutionMode.PERIODIC)
             residual = self._g - self._kernel(f_hat)
             self._metrics.calculate_metrics(
                 alpha=alpha,
                 residual=residual,
                 f_hat=f_hat,
-                L=self._L,
+                penalty_term=L @ f_hat.reshape([-1, 1]),
             )
             if save_imgs:
                 self._f_hats[alpha] = f_hat
@@ -187,15 +188,17 @@ class StandardTuner(Tuner):
         self._metrics.get_optimal_alpha()
         self._optimal_f_hat = self._solver.solve(
             alpha=self._metrics.optimal_alpha,
-            L=self._L,
+            L=L,
+            x0=x0,
             verbose=False,
         )
+        L = L_func(self._optimal_f_hat, conv_mode=ConvolutionMode.PERIODIC)
         residual = self._g - self._kernel(self._optimal_f_hat)
         self._metrics.calculate_metrics(
             alpha="optimal",
             residual=residual,
             f_hat=self._optimal_f_hat,
-            L=self._L,
+            penalty_term=L @ self._optimal_f_hat.reshape([-1, 1]),
         )
         self._metrics.log_metrics("optimal")
 
@@ -206,17 +209,21 @@ class IterativeTuner(Tuner):
     def iteratively_solve(
         self,
         alpha: float,
-        L: Callable[[npt.NDArray, str], sp.csr_matrix],
-        prev_f_hat: npt.NDArray,
+        L_func: Callable[..., sp.csr_matrix],
+        x0: npt.NDArray,
         max_iter: int,
         tol: float,
     ) -> tuple[npt.NDArray[np.float64], int]:
         """Iteratively solve the inverse problem.
 
+        Notes:
+            - L_func should be a function returning a sparse matrix
+            - These can be found in src.common.operators
+
         Args:
             alpha: Regularisation parameter
-            L: Regularisation matrix creation function
-            prev_f_hat: Previous deblurred image
+            L_func: Function creating sparse matrix
+            x0: Initial guess
             max_iter: Maximum number of iterations
             tol: Convergence tolerance
 
@@ -224,17 +231,19 @@ class IterativeTuner(Tuner):
         -------
             Tuple: Deblurred image and number of iterations
         """
+        prev_f_hat = x0.copy()
+
         for it in range(max_iter):
             # Get previous residual norm
             prev_residual = self._g - self._kernel(prev_f_hat)
             prev_residual_norm = np.square(prev_residual).sum()
 
             # Re-initialise regularisation matrix with the last predicted image
-            self._L = L(prev_f_hat, conv_mode=ConvolutionMode.PERIODIC)  # type: ignore[call-arg]
+            L = L_func(prev_f_hat, conv_mode=ConvolutionMode.PERIODIC)
             f_hat = self._solver.solve(
                 alpha=alpha,
-                L=self._L,
-                x0=prev_f_hat.flatten(),
+                L=L,
+                x0=prev_f_hat,
                 verbose=False,
             )
             prev_f_hat = f_hat
@@ -250,23 +259,25 @@ class IterativeTuner(Tuner):
     def parameter_sweep(
         self,
         alphas: list[float],
-        L: sp.csr_matrix | Callable[[npt.NDArray, str], sp.csr_matrix],
+        L_func: Callable[..., sp.csr_matrix | npt.NDArray],
+        x0: npt.NDArray | None = None,
         save_imgs: bool = False,
         **kwargs: Any,
     ) -> None:
         """Perform a parameter sweep over a range of regularisation hyper-parameters.
 
+        Notes:
+            - L_func should be a function returning a sparse matrix
+            - These can be found in src.common.operators
+
         Args:
             alphas: List of regularisation hyper-parameters
-            L: Sparse regularisation matrix or function returning it
+            L_func: Sparse regularisation matrix or function returning it
+            x0: Initial guess
             save_imgs: Cache deblurred images for each hyper-parameter
             max_iter: Maximum number of iterations
             tol: Convergence tolerance
         """
-        if isinstance(L, sp.csr_matrix):
-            raise ValueError(
-                f"L must be a function returning a sparse matrix, got: {type(L)}",
-            )
         max_iter: int = kwargs.get("max_iter", MAX_ITER)
         tol: float = kwargs.get("tol", TOL)
 
@@ -274,24 +285,28 @@ class IterativeTuner(Tuner):
         self._alphas = []
         self._f_hats = {}
 
+        if x0 is None:
+            x0 = self._g.copy()
+
         # Solve for each alpha with blurred image as starting guess
         for alpha in alphas:
             self._alphas.append(alpha)
             f_hat, it = self.iteratively_solve(
                 alpha=alpha,
-                L=L,
-                prev_f_hat=self._g,
+                L_func=L_func,
+                x0=x0,
                 max_iter=max_iter,
                 tol=tol,
             )
 
             # Calculate metrics
+            L = L_func(f_hat, conv_mode=ConvolutionMode.PERIODIC)
             residual = self._g - self._kernel(f_hat)
             self._metrics.calculate_metrics(
                 alpha=alpha,
                 residual=residual,
                 f_hat=f_hat,
-                L=self._L,
+                penalty_term=L @ f_hat.reshape([-1, 1]),
             )
             if save_imgs:
                 self._f_hats[alpha] = f_hat
@@ -307,16 +322,17 @@ class IterativeTuner(Tuner):
         self._metrics.get_optimal_alpha()
         self._optimal_f_hat, _ = self.iteratively_solve(
             alpha=self._metrics.optimal_alpha,
-            L=L,
-            prev_f_hat=self._g,
+            L_func=L_func,
+            x0=x0,
             max_iter=max_iter,
             tol=tol,
         )
+        L = L_func(self._optimal_f_hat, conv_mode=ConvolutionMode.PERIODIC)
         residual = self._g - self._kernel(self._optimal_f_hat)
         self._metrics.calculate_metrics(
             alpha="optimal",
             residual=residual,
             f_hat=self._optimal_f_hat,
-            L=self._L,
+            penalty_term=L @ self._optimal_f_hat.reshape([-1, 1]),
         )
         self._metrics.log_metrics("optimal")

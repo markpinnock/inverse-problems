@@ -1,6 +1,7 @@
 """Sparse operators for various image processing tasks."""
 
 import enum
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -26,11 +27,14 @@ class ConvolutionMode(str, enum.Enum):
     PERIODIC = "periodic"
 
 
-def identity_operator(img: npt.NDArray[np.uint8 | np.float32]) -> sp.csr_matrix:
+def identity_operator(
+    img: npt.NDArray[np.uint8 | np.float32], **kwargs: Any
+) -> sp.csr_matrix:
     """Create identity operator.
 
     Args:
         img: The input image/array.
+        kwargs: Unused kwargs to maintain same interface
 
     Returns
     -------
