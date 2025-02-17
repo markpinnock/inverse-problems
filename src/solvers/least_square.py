@@ -74,7 +74,7 @@ class LstSqSolver(ABC):
             L = sp.eye(self._flat_x_dims)
 
         if x0 is None:
-            x0 = self._b.copy()
+            x0 = np.zeros_like(self._b)
 
         return L, x0.flatten()
 
