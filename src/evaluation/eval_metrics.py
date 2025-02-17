@@ -218,13 +218,13 @@ class Metrics:
         plt.subplot(2, 1, 1)
         plt.semilogx(
             self._metrics_df.index[:-1],
-            self._metrics_df.loc[:, "discrepancy"].iloc[:-1],
+            self._metrics_df.loc[:, self._tuning_metric].iloc[:-1],
         )
         plt.axhline(0, ls="--", c="k")
         plt.axvline(self._optimal_alpha, ls="--", c="k")
         plt.xlabel("Alpha")
-        plt.ylabel("Discrepancy")
-        plt.title("Discrepancy principle")
+        plt.ylabel(self._tuning_metric)
+        plt.title(self._tuning_metric)
 
         # Plot L-curve (residual norm against Tikhonov term)
         plt.subplot(2, 1, 2)
