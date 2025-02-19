@@ -55,8 +55,8 @@ class LstSqSolver(ABC):
 
     def _prepare(
         self,
-        L: sp.csr_matrix | None = None,
-        x0: npt.NDArray | None = None,
+        L: sp.csr_matrix | None,
+        x0: npt.NDArray | None,
     ) -> tuple[sp.csr_matrix, npt.NDArray]:
         """Prepare regularisation matrix and initial guess.
 
