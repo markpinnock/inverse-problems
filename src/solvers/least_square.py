@@ -8,12 +8,11 @@ import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sp
 
+from common.constants import MAX_ITER
 from common.log import get_logger
 from common.utils import OperatorType, kernel_to_func
 
 logger = get_logger(__name__)
-
-MAX_ITER = 100
 
 
 class LstSqSolver(ABC):
