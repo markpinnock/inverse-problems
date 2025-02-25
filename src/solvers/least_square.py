@@ -269,9 +269,9 @@ class LSQRSolver(LstSqSolver):
         f_hat_flat = lsqr_output[0]
         it = lsqr_output[2]
 
-        if verbose and it <= MAX_ITER:
-            logger.info(f"Converged in {it + 1} iterations")
-        elif it > MAX_ITER:
+        if it + 1 == kwargs["iter_lim"]:
             logger.warning("Did not converge")
+        elif verbose:
+            logger.info(f"Converged in {it + 1} iterations")
 
         return f_hat_flat.reshape(self._x_dims)
