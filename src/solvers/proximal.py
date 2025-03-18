@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from functools import partial
 from typing import Any
 
 import numpy as np
@@ -57,14 +56,12 @@ class ProxGradSolver(ABC):
         self,
         shrinkage: Callable[..., npt.NDArray] | None,
         x0: npt.NDArray | None,
-        params: dict[str, Any] | None,
     ) -> tuple[Callable[[npt.NDArray], npt.NDArray], npt.NDArray]:
         """Prepare regularisation matrix and initial guess.
 
         Args:
             shrinkage: Shrinkage function
             x0: Initial guess
-            params: Parameters for the shrinkage function
 
         Returns
         -------
@@ -76,14 +73,9 @@ class ProxGradSolver(ABC):
             """Identity operator when sparsity not required."""
             return x
 
-        if params is None:
-            params = {}
-
         # Identity if shrinkage not specified, else apply parameters
         if shrinkage is None:
             shrinkage = identity
-        else:
-            shrinkage = partial(shrinkage, **params)
 
         if x0 is None:
             x0 = np.zeros_like(self._b)
@@ -151,10 +143,12 @@ class ISTASolver(ProxGradSolver):
         Returns
             npt.NDArray: Solution
         """
+        if params is None:
+            params = {}
         max_iter: int = kwargs.get("max_iter", MAX_ITER)
         tol: float = kwargs.get("tol", TOL)
 
-        shrinkage, x0 = self._prepare(shrinkage_func, x0, params)
+        shrinkage, x0 = self._prepare(shrinkage_func, x0)
         x_hat = x0.copy()
 
         # Run ISTA
@@ -165,7 +159,7 @@ class ISTASolver(ProxGradSolver):
 
             # Gradient step followed by shrinkage
             x_hat -= lambda_ * self._AT(self._A(x_hat) - self._b)
-            x_hat = shrinkage(x_hat)
+            x_hat = shrinkage(x_hat, **params)
 
             # Check for convergence
             residual = self._b - self._A(x_hat)
