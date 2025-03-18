@@ -127,8 +127,7 @@ class ISTASolver(ProxGradSolver):
         Notes:
             - Performs the update step: f = Sα,W (f - λAT (Af - g))
             - Shrinkage function Sα,W (f) converts image to e.g. wavelet domain,
-              thresholds at level α and converts back
-            - The threshold should be scaled by λ (µ = αλ)
+              thresholds at level α and converts back to spatial domain.
 
         Args:
             lambda_: step size
@@ -147,6 +146,10 @@ class ISTASolver(ProxGradSolver):
             params = {}
         max_iter: int = kwargs.get("max_iter", MAX_ITER)
         tol: float = kwargs.get("tol", TOL)
+
+        # Scale threshold by λ (µ = αλ)
+        if "threshold" in params:
+            params["threshold"] *= lambda_
 
         shrinkage, x0 = self._prepare(shrinkage_func, x0)
         x_hat = x0.copy()
