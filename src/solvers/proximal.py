@@ -85,7 +85,6 @@ class ProxGradSolver(ABC):
     @abstractmethod
     def solve(
         self,
-        lambda_: float,
         shrinkage_func: Callable[[npt.NDArray], npt.NDArray] | None = None,
         params: dict[str, float] | None = None,
         x0: npt.NDArray | None = None,
@@ -95,7 +94,6 @@ class ProxGradSolver(ABC):
         """Solve the inverse problem.
 
         Args:
-            lambda_: step size
             shrinkage_func: Shrinkage function
             params: Parameters for the shrinkage function
             x0: Initial guess
@@ -115,7 +113,6 @@ class ISTASolver(ProxGradSolver):
 
     def solve(
         self,
-        lambda_: float,
         shrinkage_func: Callable[[npt.NDArray], npt.NDArray] | None = None,
         params: dict[str, float] | None = None,
         x0: npt.NDArray | None = None,
@@ -130,7 +127,6 @@ class ISTASolver(ProxGradSolver):
               thresholds at level α and converts back to spatial domain.
 
         Args:
-            lambda_: step size
             shrinkage_func: Shrinkage function
             params: Parameters for the shrinkage function
             x0: Initial guess
@@ -146,13 +142,14 @@ class ISTASolver(ProxGradSolver):
             params = {}
         max_iter: int = kwargs.get("max_iter", MAX_ITER)
         tol: float = kwargs.get("tol", TOL)
+        lambda_ = params.pop("lambda")
 
         # Scale threshold by λ (µ = αλ)
         if "threshold" in params:
             params["threshold"] *= lambda_
 
         shrinkage, x0 = self._prepare(shrinkage_func, x0)
-        x_hat = x0.copy()
+        x_hat = x0.copy().flatten()
 
         # Run ISTA
         for it in range(max_iter):
