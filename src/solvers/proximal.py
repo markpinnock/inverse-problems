@@ -6,9 +6,16 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+import scipy.sparse as sp
 
 from common.constants import MAX_ITER, TOL
 from common.log import get_logger
+from common.operators import (
+    ConvolutionMode,
+    derivative_operator,
+    dx_operator_1d,
+    laplacian_operator,
+)
 from common.utils import OperatorType, kernel_to_func
 
 logger = get_logger(__name__)
@@ -160,6 +167,91 @@ class ISTASolver(ProxGradSolver):
             # Gradient step followed by shrinkage
             x_hat -= lambda_ * self._AT(self._A(x_hat) - self._b)
             x_hat = shrinkage(x_hat, **params)
+
+            # Check for convergence
+            residual = self._b - self._A(x_hat)
+            residual_norm = np.square(residual).sum()
+            if np.abs(residual_norm - prev_residual_norm) / prev_residual_norm < tol:
+                break
+
+        if it + 1 == max_iter:
+            logger.warning("Did not converge")
+        elif verbose:
+            logger.info(f"Converged in {it + 1} iterations")
+
+        return x_hat
+
+
+class ADMMSolverTV(ProxGradSolver):
+    """Alternating direction method of multipliers solver for total variation.
+
+    Notes:
+        https://www.stat.cmu.edu/~ryantibs/convexopt-F18/lectures/admm.pdf (slide 25)
+    """
+
+    def solve(
+        self,
+        shrinkage_func: Callable[[npt.NDArray], npt.NDArray] | None = None,
+        params: dict[str, float] | None = None,
+        x0: npt.NDArray | None = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> npt.NDArray[np.float64]:
+        """Solve the inverse problem.
+
+        Notes:
+            - Performs three update steps
+            - x-update: x = (ρDTD + I)^-1 (b + ρDT (u - z))
+            - z-update (prox operator): z = Sλ/ρ (Dx + u)
+            - u-update (dual variable): u = u + Dx - z
+            - Shrinkage function Sλ/ρ (f) thresholds at level λ/ρ.
+
+        Args:
+            shrinkage_func: Shrinkage function
+            params: Parameters for the shrinkage function
+            x0: Initial guess
+            verbose: Print status
+            **kwargs: Additional keyword arguments
+                max_iter: Maximum number of iterations
+                tol: Tolerance for convergence
+
+        Returns
+            npt.NDArray: Solution
+        """
+        if params is None:
+            params = {}
+        max_iter: int = kwargs.get("max_iter", MAX_ITER)
+        tol: float = kwargs.get("tol", TOL)
+        rho = params.pop("rho")
+
+        # Scale threshold by λ (µ = αλ)
+        if "threshold" in params:
+            params["threshold"] /= rho
+
+        shrinkage, x0 = self._prepare(shrinkage_func, x0)
+        x_hat = x0.copy().flatten()
+
+        if x_hat.ndim == 1:
+            D = dx_operator_1d(x_hat, conv_mode=ConvolutionMode.PERIODIC)
+            DTD = D.T @ D
+
+        else:
+            D = derivative_operator(x_hat, conv_mode=ConvolutionMode.PERIODIC)
+            DTD = -laplacian_operator(x_hat, conv_mode=ConvolutionMode.PERIODIC)
+
+        IrDTD = sp.eye(self._flat_x_dims) + rho * DTD
+        z = np.zeros(D.shape[0])
+        u = np.zeros(D.shape[0])
+
+        for it in range(MAX_ITER):
+            # Get previous residual norm
+            prev_residual = self._b - self._A(x_hat)
+            prev_residual_norm = np.square(prev_residual).sum()
+
+            # Perform updates
+            x_hat = sp.linalg.inv(IrDTD) @ (self._b + rho * D.T @ (z - u))
+            z = shrinkage(D @ x_hat + u, **params)
+            u += D @ x_hat - z
 
             # Check for convergence
             residual = self._b - self._A(x_hat)
