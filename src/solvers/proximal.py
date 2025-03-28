@@ -189,6 +189,51 @@ class ADMMSolverTV(ProxGradSolver):
         https://www.stat.cmu.edu/~ryantibs/convexopt-F18/lectures/admm.pdf (slide 25)
     """
 
+    def lhs_op(
+        self,
+        x_flat: npt.NDArray,
+        rhoDTD: sp.csr_matrix,
+    ) -> npt.NDArray:
+        """LHS operator for least squares.
+
+        Notes:
+            - Calculates (ATA + ρ∇T∇) x
+
+        Args:
+            x_flat: Flattened current solution
+            rhoDTD: Scaled Laplacian operator (ρ∇T∇)
+
+        Returns:
+            NDArray: result of above calculation
+        """
+        x_flat = x_flat.reshape([-1, 1])  # Required to prevent OOM issues
+        x = x_flat.reshape(self._x_dims)
+        ATAx = self._AT(self._A(x)).reshape([-1, 1])  # ATA x
+        rhoDTDx = rhoDTD @ x_flat  # ρ∇T∇ x
+
+        return ATAx + rhoDTDx
+
+    def lhst_op(
+        self,
+        b_flat: npt.NDArray,
+        rhoDTD: sp.csr_matrix,
+    ) -> npt.NDArray:
+        """Transposed LHS for least squares.
+
+        Notes:
+            - Calculates (ATA + ρ∇T∇)^T b
+
+        Args:
+            b_flat: Flattened blurred image
+            rhoDTD: Scaled Laplacian operator (ρ∇T∇)
+        """
+        b_flat = b_flat.reshape([-1, 1])  # Required to prevent OOM issues
+        b = b_flat.reshape(self._b_dims)
+        AATb = self._A(self._AT(b)).reshape([-1, 1])  # AAT b
+        rhoDDTb = rhoDTD.T @ b_flat  # ρ∇∇T b
+
+        return AATb + rhoDDTb
+
     def solve(
         self,
         shrinkage_func: Callable[[npt.NDArray], npt.NDArray] | None = None,
@@ -201,9 +246,9 @@ class ADMMSolverTV(ProxGradSolver):
 
         Notes:
             - Performs three update steps
-            - x-update: x = (ρDTD + I)^-1 (b + ρDT (u - z))
-            - z-update (prox operator): z = Sλ/ρ (Dx + u)
-            - u-update (dual variable): u = u + Dx - z
+            - x-update: x = (ATA + ρ∇T∇)^-1 (b + ρ∇T (u - z))
+            - z-update (prox operator): z = Sλ/ρ (∇x + u)
+            - u-update (dual variable): u = u + ∇x - z
             - Shrinkage function Sλ/ρ (f) thresholds at level λ/ρ.
 
         Args:
@@ -224,37 +269,48 @@ class ADMMSolverTV(ProxGradSolver):
         tol: float = kwargs.get("tol", TOL)
         rho = params.pop("rho")
 
-        # Scale threshold by λ (µ = αλ)
+        # Scale threshold by ρ (µ = λ / ρ)
         if "threshold" in params:
             params["threshold"] /= rho
 
         shrinkage, x0 = self._prepare(shrinkage_func, x0)
         x_hat = x0.copy().flatten()
 
-        if x_hat.ndim == 1:
-            D = dx_operator_1d(x_hat, conv_mode=ConvolutionMode.PERIODIC)
+        if x0.ndim == 1:
+            D = dx_operator_1d(x0, conv_mode=ConvolutionMode.PERIODIC)
             DTD = D.T @ D
 
         else:
-            D = derivative_operator(x_hat, conv_mode=ConvolutionMode.PERIODIC)
-            DTD = -laplacian_operator(x_hat, conv_mode=ConvolutionMode.PERIODIC)
+            D = derivative_operator(x0, conv_mode=ConvolutionMode.PERIODIC)
+            DTD = -laplacian_operator(x0, conv_mode=ConvolutionMode.SAME)
 
-        IrDTD = sp.eye(self._flat_x_dims) + rho * DTD
         z = np.zeros(D.shape[0])
         u = np.zeros(D.shape[0])
+        b_flat = np.reshape(self._b, [-1, 1])
+
+        lhs = sp.linalg.LinearOperator(
+            shape=(self._flat_b_dims, self._flat_x_dims),
+            matvec=lambda x: self.lhs_op(x, rhoDTD=rho * DTD),
+            rmatvec=lambda b: self.lhst_op(b, rhoDTD=rho * DTD),
+        )
 
         for it in range(MAX_ITER):
             # Get previous residual norm
-            prev_residual = self._b - self._A(x_hat)
+            prev_residual = self._b - self._A(x_hat.reshape(self._x_dims))
             prev_residual_norm = np.square(prev_residual).sum()
 
             # Perform updates
-            x_hat = sp.linalg.inv(IrDTD) @ (self._b + rho * D.T @ (z - u))
+            rhs = b_flat + rho * D.T @ (z - u).reshape([-1, 1])
+            lsqr_output = sp.linalg.lsqr(A=lhs, b=rhs, x0=x_hat, show=False, **kwargs)
+            x_hat = lsqr_output[0]
+            if lsqr_output[2] + 1 == max_iter:
+                logger.warning("x-update did not converge")
+
             z = shrinkage(D @ x_hat + u, **params)
             u += D @ x_hat - z
 
             # Check for convergence
-            residual = self._b - self._A(x_hat)
+            residual = self._b - self._A(x_hat.reshape(self._x_dims))
             residual_norm = np.square(residual).sum()
             if np.abs(residual_norm - prev_residual_norm) / prev_residual_norm < tol:
                 break
@@ -264,4 +320,4 @@ class ADMMSolverTV(ProxGradSolver):
         elif verbose:
             logger.info(f"Converged in {it + 1} iterations")
 
-        return x_hat
+        return x_hat.reshape(self._x_dims)
