@@ -265,7 +265,7 @@ class ADMMSolverTV(ProxGradSolver):
         """
         if params is None:
             params = {}
-        max_iter: int = kwargs.get("max_iter", MAX_ITER)
+        max_iter: int = kwargs.pop("max_iter", MAX_ITER)
         tol: float = kwargs.get("tol", TOL)
         rho = params.pop("rho")
 
@@ -294,7 +294,7 @@ class ADMMSolverTV(ProxGradSolver):
             rmatvec=lambda b: self.lhst_op(b, rhoDTD=rho * DTD),
         )
 
-        for it in range(MAX_ITER):
+        for it in range(max_iter):
             # Get previous residual norm
             prev_residual = self._b - self._A(x_hat.reshape(self._x_dims))
             prev_residual_norm = np.square(prev_residual).sum()
