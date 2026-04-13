@@ -8,12 +8,11 @@ import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sp
 
+from common.constants import MAX_ITER
 from common.log import get_logger
 from common.utils import OperatorType, kernel_to_func
 
 logger = get_logger(__name__)
-
-MAX_ITER = 100
 
 
 class LstSqSolver(ABC):
@@ -56,8 +55,8 @@ class LstSqSolver(ABC):
 
     def _prepare(
         self,
-        L: sp.csr_matrix | None = None,
-        x0: npt.NDArray | None = None,
+        L: sp.csr_matrix | None,
+        x0: npt.NDArray | None,
     ) -> tuple[sp.csr_matrix, npt.NDArray]:
         """Prepare regularisation matrix and initial guess.
 
@@ -74,7 +73,7 @@ class LstSqSolver(ABC):
             L = sp.eye(self._flat_x_dims)
 
         if x0 is None:
-            x0 = self._b.copy()
+            x0 = np.zeros_like(self._b)
 
         return L, x0.flatten()
 
@@ -270,9 +269,9 @@ class LSQRSolver(LstSqSolver):
         f_hat_flat = lsqr_output[0]
         it = lsqr_output[2]
 
-        if verbose and it <= MAX_ITER:
-            logger.info(f"Converged in {it + 1} iterations")
-        elif it > MAX_ITER:
+        if it + 1 == kwargs["iter_lim"]:
             logger.warning("Did not converge")
+        elif verbose:
+            logger.info(f"Converged in {it + 1} iterations")
 
         return f_hat_flat.reshape(self._x_dims)

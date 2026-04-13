@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import pywt
 
-from common.wavelets import thresholding_1d, thresholding_2d
+from common.wavelets import ThresholdMode, thresholding_1d, thresholding_2d
 
 
 def signal_l1(
@@ -24,7 +24,7 @@ def signal_l1(
         raise ValueError("Please specify threshold or quantile")
     if threshold is None:
         threshold = np.quantile(np.abs(x), q=quantile)
-    return pywt.threshold(x, threshold, mode="soft")
+    return pywt.threshold(x, threshold, mode=ThresholdMode.SOFT)
 
 
 def wavelet_l1(
@@ -68,7 +68,7 @@ def wavelet_l1(
             wavelets=wavelets,
             threshold=threshold,
             end_level=end_level if end_level is not None else num_levels,
-            mode="soft",
+            mode=ThresholdMode.SOFT,
         )
         return pywt.waverec(thresholded_wavelets, "haar")
     else:
@@ -76,6 +76,6 @@ def wavelet_l1(
             wavelets=wavelets,
             threshold=threshold,
             end_level=end_level if end_level is not None else num_levels,
-            mode="soft",
+            mode=ThresholdMode.SOFT,
         )
         return pywt.waverec2(thresholded_wavelets, "haar")

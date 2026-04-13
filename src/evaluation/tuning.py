@@ -61,6 +61,22 @@ class Tuner(ABC):
         self._f = f
         self._metrics = Metrics(tuning_metric, use_miller, noise_variance, f)
 
+    def _prepare(self, x0: npt.NDArray | None = None) -> npt.NDArray:
+        """Prepare initial guess if None.
+
+        Args:
+            x0: Initial guess (or None)
+
+        Returns
+        -------
+            Initial guess
+
+        """
+        if x0 is None:
+            x0 = np.zeros_like(self._g)
+
+        return x0
+
     @abstractmethod
     def parameter_sweep(
         self,
@@ -161,7 +177,8 @@ class StandardTuner(Tuner):
             x0: Initial guess
             save_imgs: Cache deblurred images for each hyper-parameter
         """
-        L = L_func(self._g, conv_mode=ConvolutionMode.PERIODIC)
+        x0 = self._prepare(x0)
+        L = L_func(x0, conv_mode=ConvolutionMode.PERIODIC)
         self._metrics.reset_metrics()
         self._alphas = []
         self._f_hats = {}
@@ -284,9 +301,7 @@ class IterativeTuner(Tuner):
         self._metrics.reset_metrics()
         self._alphas = []
         self._f_hats = {}
-
-        if x0 is None:
-            x0 = self._g.copy()
+        x0 = self._prepare(x0)
 
         # Solve for each alpha with blurred image as starting guess
         for alpha in alphas:
